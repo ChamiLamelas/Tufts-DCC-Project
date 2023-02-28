@@ -25,18 +25,21 @@ class Graphs:
         df = df[df[UPSTREAM_ID] != "(?)"]
         df = df[df[DOWNSTREAM_ID] != "(?)"]
         postrows = len(df)
-        logger.debug(f"{rows-postrows}/{rows} rows removed for nan/(?) microservices")
+        logger.debug(
+            f"{rows-postrows}/{rows} rows removed for nan/(?) microservices")
         self.called_by = df.groupby([DOWNSTREAM_ID])[
             UPSTREAM_ID].unique().to_dict()
         self.calling = df.groupby([UPSTREAM_ID])[
             DOWNSTREAM_ID].unique().to_dict()
         self.microservices = list(
-            self.called_by) + [e for e in self.calling if e not in self.called_by]        
-        logger.debug(f"Identified {len(self.microservices)} unique microservices")
-        logger.debug(f"Identified strange microservices: {', '.join(ms for ms in self.microservices if len(ms) < 10)}")
+            self.called_by) + [e for e in self.calling if e not in self.called_by]
+        logger.debug(
+            f"Identified {len(self.microservices)} unique microservices")
+        logger.debug(
+            f"Identified strange microservices: {', '.join(ms for ms in self.microservices if len(ms) < 10)}")
         index_map = {k: i for i, k in enumerate(self.microservices)}
-        self.called_by_lz = self.__listize(self.called_by, index_map)
-        self.calling_lz = self.__listize(self.calling, index_map)
+        self.called_by_iz = self.__integerize(self.called_by, index_map)
+        self.calling_iz = self.__integerize(self.calling, index_map)
 
     @staticmethod
     def __make_logger():
@@ -44,33 +47,26 @@ class Graphs:
         logger = logging.getLogger('Graphs')
         logger.setLevel(logging.DEBUG)
         handler = logging.FileHandler(os.path.join(LOGS, "Graphs.log"))
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
         handler.setLevel(logging.DEBUG)
         logger.addHandler(handler)
         return logger
 
-    def __listize(self, graph, index_map):
-        idz = [[] for _ in self.microservices]
-        for k, v in graph.items():
-            idz[index_map[k]].extend(index_map[e] for e in v)
-        return idz
+    def __integerize(self, graph, index_map):
+        return {index_map[k]: [index_map[e] for e in v] for k, v in graph.items()}
 
 
-
-def __get_degrees(graph_lz):
-    return [len(e) for e in graph_lz]
-
-
-def __make_degree_matrix(graph_lz, num_ms):
+def __make_degree_matrix(graph_iz, num_ms):
     matrix = np.zeros((num_ms, num_ms))
-    for i, d in enumerate(__get_degrees(graph_lz)):
-        matrix[i, i] = d
+    for k, v in graph_iz.items():
+        matrix[k, k] = len(v)
     return matrix
 
 
 def plot_degree_matrix(graphs, paths):
-    for p, g in zip(paths, [graphs.called_by_lz, graphs.calling_lz]):
+    for p, g in zip(paths, [graphs.called_by_iz, graphs.calling_iz]):
         plt.figure()
         plt.imshow(__make_degree_matrix(g, len(graphs.microservices)),
                    cmap='Reds', interpolation='nearest')
@@ -78,9 +74,9 @@ def plot_degree_matrix(graphs, paths):
 
 
 def plot_histogram(graphs, names, paths, nbins=50):
-    for p, n, g in zip(paths, names, [graphs.called_by_lz, graphs.calling_lz]):
+    for p, n, g in zip(paths, names, [graphs.called_by_iz, graphs.calling_iz]):
         plt.figure()
-        d = __get_degrees(g)
+        d = [len(v) for v in g.values()]
         plt.hist(d, bins=nbins)
         plt.suptitle(n + " Distribution")
         plt.title(f"min={min(d)}, max={max(d)}")
@@ -89,7 +85,15 @@ def plot_histogram(graphs, names, paths, nbins=50):
         plt.grid()
         plt.savefig(p)
 
-# calculate the ratio of what would be 1s/(0s + 1s) in an adjacency matrix as the sparsity ratio
-# another idea - draw graph without edges and node size is how much graph is called by / calling
-# report microservices that are called by only 1 other microservice - those could potentially be combined
 
+def calculate_sparsity_ratio(graphs, path):
+    total_edges = len(graphs.microservices) ** 2
+    num_edges = sum(len(v) for v in graphs.called_by_iz.values())
+    Path(path).write_text(f"{num_edges/total_edges:.4f}\n")
+
+
+def calculate_called_by1(graphs, path):
+    output = [k for k, v in graphs.called_by.items() if len(v) == 1]
+    Path(path).write_text("\n".join(output) + "\n")
+
+# another idea - draw graph without edges and node size is how much graph is called by / calling

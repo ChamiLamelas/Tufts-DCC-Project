@@ -3,3 +3,23 @@
 2023-02-28 16:46:15,290 - Graphs - DEBUG - 806586/6088846 rows removed for nan/(?) microservices
 2023-02-28 16:46:17,218 - Graphs - DEBUG - Identified 7386 unique microservices
 2023-02-28 16:46:17,218 - Graphs - DEBUG - Identified strange microservices: 
+2023-02-28 17:10:05,480 - Graphs - DEBUG - Building Graphs
+2023-02-28 17:10:05,481 - Graphs - DEBUG - Read in 100 row table
+2023-02-28 17:10:05,483 - Graphs - DEBUG - 2/100 rows removed for nan/(?) microservices
+2023-02-28 17:10:05,485 - Graphs - DEBUG - Identified 12 unique microservices
+2023-02-28 17:10:05,485 - Graphs - DEBUG - Identified strange microservices: 
+2023-02-28 17:10:26,242 - Graphs - DEBUG - Building Graphs
+2023-02-28 17:10:26,244 - Graphs - DEBUG - Read in 100 row table
+2023-02-28 17:10:26,245 - Graphs - DEBUG - 2/100 rows removed for nan/(?) microservices
+2023-02-28 17:10:26,247 - Graphs - DEBUG - Identified 12 unique microservices
+2023-02-28 17:10:26,247 - Graphs - DEBUG - Identified strange microservices: 
+2023-02-28 17:18:48,399 - Graphs - DEBUG - Building Graphs
+2023-02-28 17:18:48,400 - Graphs - DEBUG - Read in 100 row table
+2023-02-28 17:18:48,401 - Graphs - DEBUG - 2/100 rows removed for nan/(?) microservices
+2023-02-28 17:18:48,403 - Graphs - DEBUG - Identified 12 unique microservices
+2023-02-28 17:18:48,403 - Graphs - DEBUG - Identified strange microservices: 
+2023-02-28 17:18:58,402 - Graphs - DEBUG - Building Graphs
+2023-02-28 17:19:04,866 - Graphs - DEBUG - Read in 6088846 row table
+2023-02-28 17:19:06,109 - Graphs - DEBUG - 806586/6088846 rows removed for nan/(?) microservices
+2023-02-28 17:19:07,942 - Graphs - DEBUG - Identified 7386 unique microservices
+2023-02-28 17:19:07,943 - Graphs - DEBUG - Identified strange microservices: 
