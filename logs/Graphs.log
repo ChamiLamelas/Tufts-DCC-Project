@@ -1,0 +1,5 @@
+2023-02-28 16:46:07,152 - Graphs - DEBUG - Building Graphs
+2023-02-28 16:46:14,134 - Graphs - DEBUG - Read in 6088846 row table
+2023-02-28 16:46:15,290 - Graphs - DEBUG - 806586/6088846 rows removed for nan/(?) microservices
+2023-02-28 16:46:17,218 - Graphs - DEBUG - Identified 7386 unique microservices
+2023-02-28 16:46:17,218 - Graphs - DEBUG - Identified strange microservices: 
