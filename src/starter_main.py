@@ -11,7 +11,7 @@ g = a.Graphs(PATH)
 a.plot_histogram(g, ["Called By", "Calling"], [
     os.path.join(RESULTS, "called_by_hist.png"),
     os.path.join(RESULTS, "calling_hist.png")
-])
+], nbins=100)
 a.plot_degree_matrix(g, [
     os.path.join(RESULTS, "called_by_degree_matrix.png"),
     os.path.join(RESULTS, "calling_degree_matrix.png")
