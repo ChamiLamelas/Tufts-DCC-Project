@@ -9,9 +9,6 @@ UPSTREAM_ID = 'um'
 DOWNSTREAM_ID = 'dm'
 LOGS = os.path.join("..", "logs")
 
-# Upstream service calls downstream service
-
-
 class Graphs:
     def __init__(self, call_graph_csv):
         logger = Graphs.__make_logger()
@@ -27,10 +24,11 @@ class Graphs:
         postrows = len(df)
         logger.debug(
             f"{rows-postrows}/{rows} rows removed for nan/(?) microservices")
+        uniq = lambda x: list(set(x))
         self.called_by = df.groupby([DOWNSTREAM_ID])[
-            UPSTREAM_ID].unique().to_dict()
+            UPSTREAM_ID].apply(uniq).to_dict()
         self.calling = df.groupby([UPSTREAM_ID])[
-            DOWNSTREAM_ID].unique().to_dict()
+            DOWNSTREAM_ID].apply(uniq).to_dict()
         self.microservices = list(
             self.called_by) + [e for e in self.calling if e not in self.called_by]
         logger.debug(
@@ -79,9 +77,9 @@ def plot_histogram(graphs, names, paths, nbins=50):
         d = [len(v) for v in g.values()]
         plt.hist(d, bins=nbins)
         plt.suptitle(n + " Distribution")
-        plt.title(f"min={min(d)}, max={max(d)}")
+        plt.title(f"Minimum {n} Count={min(d)}, Maximum={max(d)}")
         plt.xlabel(n)
-        plt.ylabel("Count")
+        plt.ylabel("Frequency")
         plt.grid()
         plt.savefig(p)
 
@@ -94,6 +92,29 @@ def calculate_sparsity_ratio(graphs, path):
 
 def calculate_called_by1(graphs, path):
     output = [k for k, v in graphs.called_by.items() if len(v) == 1]
+    print(f"{len(output)} microservices are called by only 1 other microservice.")
     Path(path).write_text("\n".join(output) + "\n")
 
-# another idea - draw graph without edges and node size is how much graph is called by / calling
+def __helper_bfs(unexplored, undirected):
+    start = next(iter(unexplored))
+    queue = [start]
+    unexplored.remove(start)
+    size = 0
+    while len(queue) > 0:
+        x = queue.pop(0)
+        for n in undirected[x]:
+            if n in unexplored:
+                unexplored.remove(n)
+                queue.append(n)
+        size += 1
+    return size
+
+def calculate_connected_components(graphs, path):
+    undirected = graphs.called_by_iz.copy()
+    for k, v in graphs.calling_iz.items():
+        undirected[k] = list(set(undirected[k]).union(set(v))) if k in undirected else v.copy()
+    unexplored = set(undirected)
+    connected_sizes = list()
+    while len(unexplored) > 0:
+        connected_sizes.append(__helper_bfs(unexplored, undirected))
+    Path(path).write_text(str(sorted(connected_sizes, reverse=True)) + "\n")
