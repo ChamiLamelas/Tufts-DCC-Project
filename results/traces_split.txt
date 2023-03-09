@@ -1,0 +1,6 @@
+Split distribution of 526400 traces: {1: 521580, 2: 3357, 3: 1429, 4: 34}
+Example of 1-split: 0b133c1915919238193454000e5d37, files: [0]
+Example of 2-split: 0b133a0815919238999538000e51c4, files: [0, 1]
+Example of 3-split: 0b12e25315919236893956000d0a6f, files: [0, 1, 2]
+Example of 4-split: 0b14065315919238997709000d0a2d, files: [0, 1, 2, 3]
+Traces split on contiguous files: 526019/526400

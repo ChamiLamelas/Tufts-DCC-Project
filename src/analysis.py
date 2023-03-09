@@ -2,13 +2,29 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
-from scipy import pearsonr
+from scipy.stats import pearsonr
 from collections import defaultdict
 import os
+import csv
+
 
 UPSTREAM_ID = 'um'
 DOWNSTREAM_ID = 'dm'
 TRACE_ID = 'traceid'
+RPC_ID = 'rpcid'
+ROOT_RPCID = ''
+
+NUM_FILES = 4
+
+
+def get_parent(rpcid):
+    # Gets parent RPC IDs
+    return ROOT_RPCID if '.' not in rpcid else rpcid[:rpcid.rindex('.')]
+
+
+def get_csvs():
+    # Get CSVs in directory
+    return [os.path.join("..", "data", "MSCallGraph_" + str(i) + ".csv") for i in range(NUM_FILES)]
 
 
 def update(src, more):
@@ -29,17 +45,69 @@ def integerize(d, index_map):
     return {d[index_map[k]]: [index_map[e] for e in v] for k, v in d.items()}
 
 
+def get_trace_data(csv_path):
+    # Gets trace data from a file
+    cols = list()
+    with open(csv_path, 'r', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        next(iter(reader))
+        cols = [[row[1], row[3]] for row in reader]
+    return cols
+
+
+def get_graph(trace):
+    # Constructs call graph (tree) from trace
+    graph = defaultdict(list)
+    for rpcid in trace:
+        graph[get_parent(rpcid)].append(rpcid)
+    return dict(graph)
+
+
+# Sliding window won't work
+# class Traces:
+#     def __init__(self):
+#         self.csvs = get_csvs()
+#         self.csv = 0
+#         self.row = 0
+#         self.trace_data = None
+
+#     def __read_csv(self, csv, traceid, trace):
+#         # Reads trace csv
+#         if self.trace_data is None:
+#             self.trace_data = get_trace_data(csv)
+#         if traceid is None:
+#             traceid = self.trace_data[self.row][0]
+#             self.row += 1
+#         while self.row < len(self.trace_data) and self.trace_data[self.row][0] == traceid:
+#             self.row += 1
+#             trace.append(self.trace_data[self.row][1])
+#         if self.row == len(self.trace_data):
+#             self.trace_data = None
+#         return traceid
+
+#     def next_trace(self):
+#         trace = list()
+#         traceid = self.__read_csv(self.csvs[self.csv], None, trace)
+#         if self.trace_data is not None:
+#             return traceid, trace
+#         self.csv += 1
+#         self.row = 0
+#         if self.csv == len(self.csvs):
+#             return traceid, trace
+#         self.__read_csv(self.csvs[self.csv], traceid, trace)
+#         return traceid, trace
+
+
 class Graphs:
-    def __init__(self, call_graphs_dir):
-        call_graph_csvs = [e.path for e in os.scandir(
-            call_graphs_dir) if e.is_file() and e.endswith(".csv")]
+    def __init__(self):
+        csvs = get_csvs()
 
         # Will be built up over files
         self.called_by = defaultdict(set)
         self.calling = defaultdict(set)
         all_traces = defaultdict(set)
 
-        for call_graph_csv in call_graph_csvs:
+        for call_graph_csv in csvs:
             # Load in traces file and then remove any rows with unidentifiable microservices
             df = pd.read_csv(call_graph_csv)
             df = df[[UPSTREAM_ID, DOWNSTREAM_ID, TRACE_ID]]
