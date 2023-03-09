@@ -4,10 +4,13 @@ import matplotlib.pyplot as plt
 import logging
 from pathlib import Path
 import os
+from scipy import pearsonr
 
 UPSTREAM_ID = 'um'
 DOWNSTREAM_ID = 'dm'
+TRACE_ID = 'traceid'
 LOGS = os.path.join("..", "logs")
+
 
 class Graphs:
     def __init__(self, call_graph_csv):
@@ -16,7 +19,7 @@ class Graphs:
         df = pd.read_csv(call_graph_csv)
         rows = len(df)
         logger.debug(f"Read in {rows} row table")
-        df = df[[UPSTREAM_ID, DOWNSTREAM_ID]]
+        df = df[[UPSTREAM_ID, DOWNSTREAM_ID, TRACE_ID]]
         df = df[df[UPSTREAM_ID].notna()]
         df = df[df[DOWNSTREAM_ID].notna()]
         df = df[df[UPSTREAM_ID] != "(?)"]
@@ -24,7 +27,9 @@ class Graphs:
         postrows = len(df)
         logger.debug(
             f"{rows-postrows}/{rows} rows removed for nan/(?) microservices")
-        uniq = lambda x: list(set(x))
+
+        def uniq(x): return list(set(x))
+
         self.called_by = df.groupby([DOWNSTREAM_ID])[
             UPSTREAM_ID].apply(uniq).to_dict()
         self.calling = df.groupby([UPSTREAM_ID])[
@@ -38,6 +43,15 @@ class Graphs:
         index_map = {k: i for i, k in enumerate(self.microservices)}
         self.called_by_iz = self.__integerize(self.called_by, index_map)
         self.calling_iz = self.__integerize(self.calling, index_map)
+        upstream_freq = df.groupby([UPSTREAM_ID])[TRACE_ID].nunique().to_dict()
+        downstream_freq = df.groupby([DOWNSTREAM_ID])[
+            TRACE_ID].nunique().to_dict()
+        self.trace_freq = upstream_freq
+        for k, v in downstream_freq.items():
+            if k not in self.trace_freq:
+                self.trace_freq[k] = 0
+            self.trace_freq[k] += v
+        self.trace_freq_iz = self.__integerize(self.trace_freq, index_map)
 
     @staticmethod
     def __make_logger():
@@ -95,6 +109,7 @@ def calculate_called_by1(graphs, path):
     print(f"{len(output)} microservices are called by only 1 other microservice.")
     Path(path).write_text("\n".join(output) + "\n")
 
+
 def __helper_bfs(unexplored, undirected):
     start = next(iter(unexplored))
     queue = [start]
@@ -109,12 +124,36 @@ def __helper_bfs(unexplored, undirected):
         size += 1
     return size
 
+
 def calculate_connected_components(graphs, path):
     undirected = graphs.called_by_iz.copy()
     for k, v in graphs.calling_iz.items():
-        undirected[k] = list(set(undirected[k]).union(set(v))) if k in undirected else v.copy()
+        undirected[k] = list(set(undirected[k]).union(
+            set(v))) if k in undirected else v.copy()
     unexplored = set(undirected)
     connected_sizes = list()
     while len(unexplored) > 0:
         connected_sizes.append(__helper_bfs(unexplored, undirected))
     Path(path).write_text(str(sorted(connected_sizes, reverse=True)) + "\n")
+
+
+def calculate_correlation(graphs, paths):
+    x1 = list()
+    x2 = list()
+    y = list()
+    for k, v in graphs.called_by_iz.items():
+        x1.append(v)
+        x2.append(graphs.calling_iz[k])
+        y.append(graphs.trace_freq_by_iz[k])
+    plt.figure()
+    plt.plot(x1, y)
+    plt.suptitle("Correlation between Called-By and Trace Frequency")
+    plt.title(f"r = {pearsonr(x1, y)[0]:.4f}")
+    plt.grid()
+    plt.savefig(paths[0])
+    plt.figure()
+    plt.plot(x2, y)
+    plt.suptitle("Correlation between Calling and Trace Frequency")
+    plt.title(f"r = {pearsonr(x2, y)[0]:.4f}")
+    plt.grid()
+    plt.savefig(paths[1])
