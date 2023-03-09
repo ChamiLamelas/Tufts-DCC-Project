@@ -1,88 +1,92 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import logging
 from pathlib import Path
-import os
 from scipy import pearsonr
+from collections import defaultdict
+import os
 
 UPSTREAM_ID = 'um'
 DOWNSTREAM_ID = 'dm'
 TRACE_ID = 'traceid'
-LOGS = os.path.join("..", "logs")
+
+
+def update(src, more):
+    # Takes 2 Any -> set dicts and unions their values
+    # Assumes any src[k] ok for any k in more
+    for k, v in more.items():
+        src[k] = src[k].union(v)
+
+
+def listify(d):
+    # Converts Any -> Iterable dict to Any -> list
+    return {k: list(v) for k, v in d.items()}
+
+
+def integerize(d, index_map):
+    # Maps Any -> list[Any] dict -> int -> list[int] dict using index_map
+    # to map keys and elements in values to ints
+    return {d[index_map[k]]: [index_map[e] for e in v] for k, v in d.items()}
 
 
 class Graphs:
-    def __init__(self, call_graph_csv):
-        logger = Graphs.__make_logger()
-        logger.debug("Building Graphs")
-        df = pd.read_csv(call_graph_csv)
-        rows = len(df)
-        logger.debug(f"Read in {rows} row table")
-        df = df[[UPSTREAM_ID, DOWNSTREAM_ID, TRACE_ID]]
-        df = df[df[UPSTREAM_ID].notna()]
-        df = df[df[DOWNSTREAM_ID].notna()]
-        df = df[df[UPSTREAM_ID] != "(?)"]
-        df = df[df[DOWNSTREAM_ID] != "(?)"]
-        postrows = len(df)
-        logger.debug(
-            f"{rows-postrows}/{rows} rows removed for nan/(?) microservices")
+    def __init__(self, call_graphs_dir):
+        call_graph_csvs = [e.path for e in os.scandir(
+            call_graphs_dir) if e.is_file() and e.endswith(".csv")]
 
-        def uniq(x): return list(set(x))
+        # Will be built up over files
+        self.called_by = defaultdict(set)
+        self.calling = defaultdict(set)
+        all_traces = defaultdict(set)
 
-        self.called_by = df.groupby([DOWNSTREAM_ID])[
-            UPSTREAM_ID].apply(uniq).to_dict()
-        self.calling = df.groupby([UPSTREAM_ID])[
-            DOWNSTREAM_ID].apply(uniq).to_dict()
-        self.microservices = list(
-            self.called_by) + [e for e in self.calling if e not in self.called_by]
-        logger.debug(
-            f"Identified {len(self.microservices)} unique microservices")
-        logger.debug(
-            f"Identified strange microservices: {', '.join(ms for ms in self.microservices if len(ms) < 10)}")
+        for call_graph_csv in call_graph_csvs:
+            # Load in traces file and then remove any rows with unidentifiable microservices
+            df = pd.read_csv(call_graph_csv)
+            df = df[[UPSTREAM_ID, DOWNSTREAM_ID, TRACE_ID]]
+            df = df[df[UPSTREAM_ID].notna()]
+            df = df[df[DOWNSTREAM_ID].notna()]
+            df = df[df[UPSTREAM_ID] != "(?)"]
+            df = df[df[DOWNSTREAM_ID] != "(?)"]
+
+            # Collects set of UMs for each DM - update what we have for all files - update( )
+            # is doing a set union, so this will keep our UMs seen for each DM unique
+            called_by = df.groupby([DOWNSTREAM_ID])[
+                UPSTREAM_ID].apply(set).to_dict()
+            update(self.called_by, called_by)
+
+            # Collects set of DMs for each UM - update what we have for all files in same way
+            calling = df.groupby([UPSTREAM_ID])[
+                DOWNSTREAM_ID].apply(set).to_dict()
+            update(self.calling, calling)
+
+            # for each UM, collect all traces they appear in - all_traces maps a microservice
+            # ID to all traces it appears in (as either upstream or downstream)
+            upstream_traces = df.groupby([UPSTREAM_ID])[
+                TRACE_ID].apply(set).to_dict()
+            update(all_traces, upstream_traces)
+
+            # for each DM, collect all traces they appear in - since we're doing update( ) i.e.
+            # a set union - we keep traces unique based on microservice
+            downstream_traces = df.groupby([DOWNSTREAM_ID])[
+                TRACE_ID].apply(set).to_dict()
+            update(all_traces, downstream_traces)
+
+        # change mapping to be to lists instead of sets
+        self.called_by = listify(self.called_by)
+        self.calling = listify(self.calling)
+
+        # Identify unique microservices from keys of all traces (collects both UMs and DMs already
+        # could also have done union of keys in called_by and calling)
+        self.microservices = list(all_traces)
+
+        # Derive trace frequencies from unique traces per microservice
+        self.trace_freq = {k: len(v) for k, v in all_traces.items()}
+
+        # Convert everything to indices after building enumeration index map
         index_map = {k: i for i, k in enumerate(self.microservices)}
-        self.called_by_iz = self.__integerize(self.called_by, index_map)
-        self.calling_iz = self.__integerize(self.calling, index_map)
-        upstream_freq = df.groupby([UPSTREAM_ID])[TRACE_ID].nunique().to_dict()
-        downstream_freq = df.groupby([DOWNSTREAM_ID])[
-            TRACE_ID].nunique().to_dict()
-        self.trace_freq = upstream_freq
-        for k, v in downstream_freq.items():
-            if k not in self.trace_freq:
-                self.trace_freq[k] = 0
-            self.trace_freq[k] += v
-        self.trace_freq_iz = self.__integerize(self.trace_freq, index_map)
-
-    @staticmethod
-    def __make_logger():
-        Path(LOGS).mkdir(parents=True, exist_ok=True)
-        logger = logging.getLogger('Graphs')
-        logger.setLevel(logging.DEBUG)
-        handler = logging.FileHandler(os.path.join(LOGS, "Graphs.log"))
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
-        handler.setLevel(logging.DEBUG)
-        logger.addHandler(handler)
-        return logger
-
-    def __integerize(self, graph, index_map):
-        return {index_map[k]: [index_map[e] for e in v] for k, v in graph.items()}
-
-
-def __make_degree_matrix(graph_iz, num_ms):
-    matrix = np.zeros((num_ms, num_ms))
-    for k, v in graph_iz.items():
-        matrix[k, k] = len(v)
-    return matrix
-
-
-def plot_degree_matrix(graphs, paths):
-    for p, g in zip(paths, [graphs.called_by_iz, graphs.calling_iz]):
-        plt.figure()
-        plt.imshow(__make_degree_matrix(g, len(graphs.microservices)),
-                   cmap='Reds', interpolation='nearest')
-        plt.savefig(p)
+        self.called_by_iz = integerize(self.called_by, index_map)
+        self.calling_iz = integerize(self.calling, index_map)
+        self.trace_freq_iz = integerize(self.trace_freq, index_map)
 
 
 def plot_histogram(graphs, names, paths, nbins=50):
