@@ -1,12 +1,14 @@
+# https://github.com/alibaba/clusterdata/tree/master/cluster-trace-microservices-v2021
+
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from scipy.stats import pearsonr
 from collections import defaultdict
 import os
 import csv
-
+import time
+from tqdm import tqdm
 
 UPSTREAM_ID = 'um'
 DOWNSTREAM_ID = 'dm'
@@ -14,7 +16,7 @@ TRACE_ID = 'traceid'
 RPC_ID = 'rpcid'
 ROOT_RPCID = ''
 
-NUM_FILES = 4
+NUM_FILES = 145
 
 
 def get_parent(rpcid):
@@ -40,9 +42,11 @@ def listify(d):
 
 
 def integerize(d, index_map):
-    # Maps Any -> list[Any] dict -> int -> list[int] dict using index_map
-    # to map keys and elements in values to ints
-    return {d[index_map[k]]: [index_map[e] for e in v] for k, v in d.items()}
+    # Given called by / calling maps dict[str, list[str]] -> dict[int, list[int]]
+    # And frequency dict[str, int] -> dict[int, int] using index_map
+    if isinstance(next(iter(d.values())), int):
+        return {index_map[k]: v for k, v in d.items()}
+    return {index_map[k]: [index_map[e] for e in v] for k, v in d.items()}
 
 
 def get_trace_data(csv_path):
@@ -63,39 +67,10 @@ def get_graph(trace):
     return dict(graph)
 
 
-# Sliding window won't work
-# class Traces:
-#     def __init__(self):
-#         self.csvs = get_csvs()
-#         self.csv = 0
-#         self.row = 0
-#         self.trace_data = None
-
-#     def __read_csv(self, csv, traceid, trace):
-#         # Reads trace csv
-#         if self.trace_data is None:
-#             self.trace_data = get_trace_data(csv)
-#         if traceid is None:
-#             traceid = self.trace_data[self.row][0]
-#             self.row += 1
-#         while self.row < len(self.trace_data) and self.trace_data[self.row][0] == traceid:
-#             self.row += 1
-#             trace.append(self.trace_data[self.row][1])
-#         if self.row == len(self.trace_data):
-#             self.trace_data = None
-#         return traceid
-
-#     def next_trace(self):
-#         trace = list()
-#         traceid = self.__read_csv(self.csvs[self.csv], None, trace)
-#         if self.trace_data is not None:
-#             return traceid, trace
-#         self.csv += 1
-#         self.row = 0
-#         if self.csv == len(self.csvs):
-#             return traceid, trace
-#         self.__read_csv(self.csvs[self.csv], traceid, trace)
-#         return traceid, trace
+def nice_time(sec):
+    # Nice time
+    mins, secs = divmod(sec, 60)
+    return f"{mins}m {secs:.4f}s"
 
 
 class Graphs:
@@ -107,7 +82,8 @@ class Graphs:
         self.calling = defaultdict(set)
         all_traces = defaultdict(set)
 
-        for call_graph_csv in csvs:
+        ti = time.time()
+        for call_graph_csv in tqdm(csvs, desc="Processing files", total=len(csvs)):
             # Load in traces file and then remove any rows with unidentifiable microservices
             df = pd.read_csv(call_graph_csv)
             df = df[[UPSTREAM_ID, DOWNSTREAM_ID, TRACE_ID]]
@@ -156,6 +132,15 @@ class Graphs:
         self.calling_iz = integerize(self.calling, index_map)
         self.trace_freq_iz = integerize(self.trace_freq, index_map)
 
+        tf = time.time()
+        print(f"Loaded in {nice_time(tf - ti)}")
+
+    def num_microservices(self):
+        return len(self.microservices)
+
+    def num_dependencies(self):
+        return sum(len(v) for v in self.called_by.values())
+
 
 def plot_histogram(graphs, names, paths, nbins=50):
     for p, n, g in zip(paths, names, [graphs.called_by_iz, graphs.calling_iz]):
@@ -178,8 +163,8 @@ def calculate_sparsity_ratio(graphs, path):
 
 def calculate_called_by1(graphs, path):
     output = [k for k, v in graphs.called_by.items() if len(v) == 1]
-    print(f"{len(output)} microservices are called by only 1 other microservice.")
-    Path(path).write_text("\n".join(output) + "\n")
+    Path(path).write_text(
+        f"{len(output)} microservices are called by only 1 other microservice.\n")
 
 
 def __helper_bfs(unexplored, undirected):
@@ -211,21 +196,28 @@ def calculate_connected_components(graphs, path):
 
 def calculate_correlation(graphs, paths):
     x1 = list()
-    x2 = list()
-    y = list()
+    y1 = list()
     for k, v in graphs.called_by_iz.items():
-        x1.append(v)
-        x2.append(graphs.calling_iz[k])
-        y.append(graphs.trace_freq_by_iz[k])
+        x1.append(len(v))
+        y1.append(graphs.trace_freq_iz[k])
     plt.figure()
-    plt.plot(x1, y)
+    plt.xlabel("Called By Degree")
+    plt.ylabel("Number of Containing Traces")
+    plt.scatter(x1, y1)
     plt.suptitle("Correlation between Called-By and Trace Frequency")
-    plt.title(f"r = {pearsonr(x1, y)[0]:.4f}")
+    plt.title(f"r = {pearsonr(x1, y1)[0]:.4f}")
     plt.grid()
     plt.savefig(paths[0])
+    x2 = list()
+    y2 = list()
+    for k, v in graphs.calling_iz.items():
+        x2.append(len(v))
+        y2.append(graphs.trace_freq_iz[k])
     plt.figure()
-    plt.plot(x2, y)
+    plt.xlabel("Calling Degree")
+    plt.ylabel("Number of Containing Traces")
+    plt.scatter(x2, y2)
     plt.suptitle("Correlation between Calling and Trace Frequency")
-    plt.title(f"r = {pearsonr(x2, y)[0]:.4f}")
+    plt.title(f"r = {pearsonr(x2, y2)[0]:.4f}")
     plt.grid()
     plt.savefig(paths[1])

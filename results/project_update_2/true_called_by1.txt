@@ -1,0 +1,1 @@
+7648 microservices are called by only 1 other microservice.

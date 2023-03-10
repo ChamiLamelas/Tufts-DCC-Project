@@ -3,6 +3,7 @@ import pandas as pd
 from collections import defaultdict, Counter
 from pathlib import Path
 import os
+from tqdm import tqdm
 
 
 def is_contiguous(nums):
@@ -11,7 +12,7 @@ def is_contiguous(nums):
 
 csvs = a.get_csvs()
 traces_files = defaultdict(list)
-for i, csv in enumerate(csvs):
+for i, csv in tqdm(enumerate(csvs), desc="Processing files", total=len(csvs)):
     trace_ids = list(pd.read_csv(csv)[a.TRACE_ID].unique())
     for trace_id in trace_ids:
         traces_files[trace_id].append(i)

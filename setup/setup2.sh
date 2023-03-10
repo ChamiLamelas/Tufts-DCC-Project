@@ -9,4 +9,5 @@ python3 -m pip install --upgrade Pillow
 pip3 install matplotlib
 pip3 install scipy
 pip3 install networkx
+pip3 install tqdm
 
