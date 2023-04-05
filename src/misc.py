@@ -1,5 +1,3 @@
-# https://github.com/alibaba/clusterdata/tree/master/cluster-trace-microservices-v2021
-
 import os
 from pathlib import Path
 import sys
@@ -9,6 +7,7 @@ import pickle
 
 DATA_FOLDER = os.path.join('..', 'data')
 RESULT_FOLDER = os.path.join('..', 'results')
+TRACE_DATA_FOLDER = os.path.join(DATA_FOLDER, 'traces')
 
 UPSTREAM_ID = 'um'
 DOWNSTREAM_ID = 'dm'
@@ -27,7 +26,41 @@ TRACES_FILE = os.path.join(AGGREGATE_DEPENDENCY, 'traces.pkl')
 MICROSERVICES_FILE = os.path.join(AGGREGATE_DEPENDENCY, 'microservices.pkl')
 
 TRACE_IDS_FILE = os.path.join(TRACES, 'ids.pkl')
-TRACE_RPCS_FILE = os.path.join(TRACES, 'rpcs.pkl')
+TRACE_FILES_FILE = os.path.join(TRACES, 'files.pkl')
+
+TRACE_COLUMNS = [TRACE_ID, UPSTREAM_ID,
+                 DOWNSTREAM_ID, RPC_ID, RPCTYPE_ID, TIMESTAMP_ID]
+
+MISSING_MICROSERVICE = -1
+
+CONCURRENCY_FILE = os.path.join(TRACES, 'concurrency.pkl')
+DEPTH_FILE = os.path.join(TRACES, 'depths.pkl')
+
+__UPSTREAM_ID_IDX = TRACE_COLUMNS.index(UPSTREAM_ID)
+__DOWNSTREAM_ID_IDX = TRACE_COLUMNS.index(DOWNSTREAM_ID)
+__RPC_ID_IDX = TRACE_COLUMNS.index(RPC_ID)
+__RPCTYPE_ID_IDX = TRACE_COLUMNS.index(RPCTYPE_ID)
+__TIMESTAMP_ID_IDX = TRACE_COLUMNS.index(TIMESTAMP_ID)
+
+
+def um(row):
+    return row[__UPSTREAM_ID_IDX - 1]
+
+
+def dm(row):
+    return row[__DOWNSTREAM_ID_IDX - 1]
+
+
+def rpc(row):
+    return row[__RPC_ID_IDX - 1]
+
+
+def rpctype(row):
+    return row[__RPCTYPE_ID_IDX - 1]
+
+
+def timestamp(row):
+    return row[__TIMESTAMP_ID_IDX - 1]
 
 
 def integerize(d, index_map):
@@ -46,15 +79,31 @@ def dict_value_union(dict1, dict2):
             dict1[k] = dict1[k].union(v)
 
 
+def dict_value_extend(dict1, dict2):
+    for k, v in dict2.items():
+        if k not in dict1:
+            dict1[k] = v
+        else:
+            dict1[k].extend(v)
+
+
 def read_object(path):
-    with open(os.path.join(RESULT_FOLDER, path), 'rb') as handle:
+    with open(path, 'rb') as handle:
         return pickle.load(handle)
 
 
+def read_result_object(path):
+    return read_object(os.path.join(RESULT_FOLDER, path))
+
+
 def save_object(path, obj):
-    prep_path(os.path.join(RESULT_FOLDER, path))
-    with open(os.path.join(RESULT_FOLDER, path), 'wb') as handle:
+    prep_path(path)
+    with open(path, 'wb') as handle:
         pickle.dump(obj, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def save_result_object(path, obj):
+    save_object(os.path.join(RESULT_FOLDER, path), obj)
 
 
 def prettytime(secs):
@@ -81,24 +130,30 @@ def write_text(path, text):
 
 def make_target(func):
     def target(f, *extra):
-        save_object(f + ".tmp", func(f, *extra))
+        save_result_object(f + ".tmp", func(f, *extra))
     return target
 
 
-def run_func_on_data_files(func, extra_args=tuple()):
+def run_func_on_data_files(func, *extra_args, return_results=True):
     files = get_csvs()
     ti = time.time()
     processes = [None] * len(files)
     for i, f in enumerate(files):
-        processes[i] = mp.Process(
-            target=make_target(func), args=(f,) + extra_args)
+        if return_results:
+            processes[i] = mp.Process(
+                target=make_target(func), args=(f,) + extra_args)
+        else:
+            processes[i] = mp.Process(
+                target=func, args=(f,) + extra_args)
         processes[i].start()
     for p in processes:
         p.join()
-    results = list()
-    for f in files:
-        results.append(read_object(f + ".tmp"))
-        os.remove(os.path.join(RESULT_FOLDER, f + ".tmp"))
+    results = None
+    if return_results:
+        results = list()
+        for f in files:
+            results.append(read_result_object(f + ".tmp"))
+            os.remove(os.path.join(RESULT_FOLDER, f + ".tmp"))
     tf = time.time()
     debug(
         f"Ran {func.__name__} on {len(files)} processes in {prettytime(tf - ti)}")

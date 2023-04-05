@@ -8,7 +8,21 @@ SUMMARY_STATISTICS = 'summary_statistics'
 CORRELATIONS = 'correlations'
 
 
-def plot_histogram(called_by, calling):
+def plot_trace_histogram(traces):
+    path = os.path.join(c.RESULT_FOLDER, CALL_DISTRIBUTIONS, 'traces.png')
+    c.prep_path(path)
+    plt.figure()
+    d = list(traces.values())
+    plt.hist(d, bins=200)
+    plt.suptitle("Distribution of Microservice Trace Occurrence")
+    plt.title(f"Minimum Occurrence Count={min(d)}, Maximum={max(d)}")
+    plt.xlabel("Number of Traces Microservice Occurred In")
+    plt.ylabel("Frequency")
+    plt.grid()
+    plt.savefig(path)
+
+
+def plot_call_histograms(called_by, calling):
     paths = (os.path.join(c.RESULT_FOLDER, CALL_DISTRIBUTIONS, p)
              for p in ('called_by.png', 'calling.png'))
     for p, n, g in zip(paths, ('Called By', 'Calling'), (called_by, calling)):
@@ -99,11 +113,12 @@ def calculate_correlation(called_by, calling, traces):
 
 
 def main():
-    called_by = c.read_object(c.CALLED_BY_FILE)
-    calling = c.read_object(c.CALLING_FILE)
-    traces = c.read_object(c.TRACES_FILE)
-    count_microservices = len(c.read_object(c.MICROSERVICES_FILE))
-    plot_histogram(called_by, calling)
+    called_by = c.read_result_object(c.CALLED_BY_FILE)
+    calling = c.read_result_object(c.CALLING_FILE)
+    traces = c.read_result_object(c.TRACES_FILE)
+    count_microservices = len(c.read_result_object(c.MICROSERVICES_FILE))
+    plot_call_histograms(called_by, calling)
+    plot_trace_histogram(traces)
     calculate_sparsity_ratio(count_microservices, called_by)
     calculate_called_by1(called_by)
     calculate_connected_components(called_by, calling)

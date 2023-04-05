@@ -1,0 +1,2 @@
+356740/377519 traces have a row with either the upstream or downstream microservice missing
+224324/377519 traces have a row with both the upstream and downstream microservice missing

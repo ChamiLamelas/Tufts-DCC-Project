@@ -65,10 +65,10 @@ def get_from_each_file():
     microservices = list(microservices)
     traces = {k: len(v) for k, v in traces.items()}
     integer_map = {m: i for i, m in enumerate(microservices)}
-    c.save_object(c.CALLED_BY_FILE, c.integerize(called_by, integer_map))
-    c.save_object(c.CALLING_FILE, c.integerize(calling, integer_map))
-    c.save_object(c.TRACES_FILE, c.integerize(traces, integer_map))
-    c.save_object(c.MICROSERVICES_FILE, microservices)
+    c.save_result_object(c.CALLED_BY_FILE, c.integerize(called_by, integer_map))
+    c.save_result_object(c.CALLING_FILE, c.integerize(calling, integer_map))
+    c.save_result_object(c.TRACES_FILE, c.integerize(traces, integer_map))
+    c.save_result_object(c.MICROSERVICES_FILE, microservices)
     tf = time.time()
     c.debug(f"Integerizing and saving took {c.prettytime(tf - ti)}")
 
