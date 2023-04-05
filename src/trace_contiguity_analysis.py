@@ -1,21 +1,28 @@
-import analysis as a
 import pandas as pd
 from collections import defaultdict, Counter
-from pathlib import Path
 import os
-from tqdm import tqdm
+import misc as c
+import time
 
 
 def is_contiguous(nums):
     return set(range(min(nums), max(nums) + 1)) == set(nums)
 
 
-csvs = a.get_csvs()
+def get_traces(f):
+    df = pd.read_csv(os.path.join(c.DATA_FOLDER, f))
+    return set(df[c.TRACE_ID].unique())
+
+
+results = c.run_func_on_data_files(get_traces)
+ti = time.time()
 traces_files = defaultdict(list)
-for i, csv in tqdm(enumerate(csvs), desc="Processing files", total=len(csvs)):
-    trace_ids = list(pd.read_csv(csv)[a.TRACE_ID].unique())
-    for trace_id in trace_ids:
-        traces_files[trace_id].append(i)
+for i, traces in enumerate(results):
+    for trace in traces:
+        traces_files[trace].append(i)
+tf = time.time()
+c.debug(f"Merging took " + c.prettytime(tf - ti))
+
 splits = dict(Counter(len(v) for v in traces_files.values()))
 out = [f"Split distribution of {len(traces_files)} traces: {splits}"]
 for ks in splits:
@@ -26,5 +33,5 @@ for ks in splits:
 contiguous_splits = sum(1 for v in traces_files.values() if is_contiguous(v))
 out.append(
     f"Traces split on contiguous files: {contiguous_splits}/{len(traces_files)}")
-Path(os.path.join("..", "results", "traces_split.txt")
-     ).write_text("\n".join(out) + "\n")
+c.write_text(os.path.join(c.RESULT_FOLDER, c.ERRORS,
+             "trace_splitting.txt"), "\n".join(out) + "\n")

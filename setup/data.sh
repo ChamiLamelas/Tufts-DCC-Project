@@ -1,5 +1,5 @@
 mkdir -p ../data
-start=11
+start=0
 end=144
 for i in $( eval echo {$start..$end} )
 do
