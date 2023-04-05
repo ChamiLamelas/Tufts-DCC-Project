@@ -81,7 +81,7 @@ def write_text(path, text):
 
 def make_target(func):
     def target(f, *extra):
-        return save_object(f + ".tmp", func(f, *extra))
+        save_object(f + ".tmp", func(f, *extra))
     return target
 
 
@@ -91,7 +91,7 @@ def run_func_on_data_files(func, extra_args=tuple()):
     processes = [None] * len(files)
     for i, f in enumerate(files):
         processes[i] = mp.Process(
-            target=make_target(func), args=(f, ) + extra_args)
+            target=make_target(func), args=(f,) + extra_args)
         processes[i].start()
     for p in processes:
         p.join()
