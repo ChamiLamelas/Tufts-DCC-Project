@@ -1,30 +1,8 @@
-from collections import defaultdict, Counter
+from collections import Counter
 import misc as c
 import os
 import collect_traces as ct
 from tqdm import tqdm
-
-
-def get_parent(rpcid):
-    # Gets parent RPC ID
-    return None if '.' not in rpcid else rpcid[:rpcid.rindex('.')]
-
-
-def get_graph(trace):
-    # Constructs call graph (tree) from trace
-    graph = defaultdict(list)
-    for row in trace:
-        graph[(c.um(row), get_parent(c.rpc(row)))
-              ].append((c.dm(row), c.rpc(row)))
-    return dict(graph)
-
-
-def count_on_condition(traces, condition):
-    return sum(condition(trace) for trace in traces)
-
-
-def has_unique_rpcids(trace):
-    return len(trace) == len({c.rpc(row) for row in trace})
 
 
 def missing_nonzero_root(trace):
@@ -32,7 +10,7 @@ def missing_nonzero_root(trace):
 
 
 def rpcids_unique(traces):
-    return count_on_condition(traces, has_unique_rpcids)
+    return c.count_on_condition(traces, ct.has_unique_rpcids)
 
 
 def save_rpcids_unique(count_unique, total_traces):
@@ -76,7 +54,7 @@ def save_depth(depths):
 
 
 def traces_with_nonzero_root(traces):
-    return count_on_condition(traces, missing_nonzero_root)
+    return c.count_on_condition(traces, missing_nonzero_root)
 
 
 def save_nonzero_root(nonzero_count, total_traces):
@@ -88,7 +66,7 @@ def main():
     prereqs = ct.collect_prerequisites()
     total_missing_one, total_missing_both, total_traces, total_uniq_rpcids, total_nonzero_root = 0, 0, 0, 0, 0
     concurrencies, depths = list(), list()
-    files = c.get_csvs()[:3]
+    files = c.get_csvs()
     for file in tqdm(files, desc='Scraping Traces', total=len(files)):
         traces = list(ct.get_trace_data(file, *prereqs).values())
         total_traces += len(traces)

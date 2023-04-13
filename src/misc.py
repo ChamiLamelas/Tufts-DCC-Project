@@ -32,9 +32,15 @@ TRACE_COLUMNS = [TRACE_ID, UPSTREAM_ID,
                  DOWNSTREAM_ID, RPC_ID, RPCTYPE_ID, TIMESTAMP_ID]
 
 MISSING_MICROSERVICE = -1
+BLANK_MICROSERVICE = -2
 
 CONCURRENCY_FILE = os.path.join(TRACES, 'concurrency.pkl')
 DEPTH_FILE = os.path.join(TRACES, 'depths.pkl')
+
+NICE_TRACES_FILE = os.path.join(DATA_FOLDER, "nice_traces.pkl")
+NON_UNIQ_TRACES_FILE = os.path.join(DATA_FOLDER, "not_uniq_rpcid_traces.pkl")
+MISSING_MS_TRACES_FILE = os.path.join(DATA_FOLDER, "missing_one_traces.pkl")
+MISSING_BOTH_TRACES_FILE = os.path.join(DATA_FOLDER, "missing_both_traces.pkl")
 
 __UPSTREAM_ID_IDX = TRACE_COLUMNS.index(UPSTREAM_ID)
 __DOWNSTREAM_ID_IDX = TRACE_COLUMNS.index(DOWNSTREAM_ID)
@@ -61,6 +67,14 @@ def rpctype(row):
 
 def timestamp(row):
     return row[__TIMESTAMP_ID_IDX - 1]
+
+
+def set_um(row, um):
+    row[__UPSTREAM_ID_IDX - 1] = um
+
+
+def set_dm(row, dm):
+    row[__DOWNSTREAM_ID_IDX - 1] = dm
 
 
 def integerize(d, index_map):
@@ -158,3 +172,32 @@ def run_func_on_data_files(func, *extra_args, return_results=True):
     debug(
         f"Ran {func.__name__} on {len(files)} processes in {prettytime(tf - ti)}")
     return results
+
+
+def get_cmdline_arg(func=None):
+    assert len(sys.argv) == 2
+    return sys.argv[1] if func is None else func(sys.argv[1])
+
+
+def dict_val_filter(func, d):
+    return {k: v for k, v in d.items() if func(v)}
+
+
+def dict_get_n(d, n):
+    return {k: v for k, v in list(d.items())[:n]}
+
+
+def dict_get_1(d):
+    d = dict_get_n(d, 1)
+    return list(d.keys())[0], list(d.values())[0]
+
+
+def count_on_condition(ls, condition):
+    return sum(condition(e) for e in ls)
+
+
+def has_condition_match(ls, condition):
+    for e in ls:
+        if condition(e):
+            return True
+    return False
