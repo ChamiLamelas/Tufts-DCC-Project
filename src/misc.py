@@ -32,7 +32,6 @@ TRACE_COLUMNS = [TRACE_ID, UPSTREAM_ID,
                  DOWNSTREAM_ID, RPC_ID, RPCTYPE_ID, TIMESTAMP_ID]
 
 MISSING_MICROSERVICE = -1
-BLANK_MICROSERVICE = -2
 
 CONCURRENCY_FILE = os.path.join(TRACES, 'concurrency.pkl')
 DEPTH_FILE = os.path.join(TRACES, 'depths.pkl')
@@ -201,3 +200,6 @@ def has_condition_match(ls, condition):
         if condition(e):
             return True
     return False
+
+def make_blank_row(rpcid):
+    return [-2, -3, rpcid, 'sub', 0]

@@ -35,8 +35,8 @@ def get_child_rows(rpcid, trace):
 
 
 def get_parent_rows(rpcid, trace):
-    parentid = rpcid[:rpcid.rindex('.')] if '.' in rpcid else None
-    return [row for row in trace if c.rpc(row) == parentid]
+    parentid = get_parent(rpcid)
+    return [(i, row) for i, row in enumerate(trace) if c.rpc(row) == parentid]
 
 
 def get_parent(rpcid):
@@ -55,6 +55,64 @@ def get_graph(trace):
 
 def has_unique_rpcids(trace):
     return len(trace) == len({c.rpc(row) for row in trace})
+
+
+def _find_root(trace):
+    # Identify root by find row in trace that has the minimum number of
+    # dots in the RPCID, we return that index
+    return min(list(range(len(trace))), key=lambda i: c.rpc(trace[i]).count('.'))
+
+
+def _fill_to_root(trace, rowidx, can_reach_parent):
+    # We start at some arbitrary row in the trace, first we check
+    # if we have determined if the parent is in the trace
+    while not can_reach_parent[rowidx]:
+        # If we haven't determined it yet, mark that we have 
+        # determined it -- as this is what will happen below
+        can_reach_parent[rowidx] = True
+
+        # Search for parent by RPCID in the trace
+        parents = get_parent_rows(c.rpc(trace[rowidx]), trace)
+
+        # If no parent found, add a new blank row to the trace that
+        # would be this row's parent
+        if len(parents) == 0:
+            row = c.make_blank_row(get_parent(c.rpc(trace[rowidx])))
+            trace.append(row)
+
+            # We haven't determined if this new row's parent is in
+            # the trace so we put a False entry for it in the table
+            can_reach_parent.append(False)
+
+            # Next iteration we will find the new row's parent
+            rowidx = len(can_reach_parent) - 1
+        else:
+            # Next iteration we will see if the discovered parent
+            # can reach its parent (this allows us to terminate
+            # this loop early instead of tracing all the way up
+            # to the root of the trace again)
+            rowidx = parents[0][0]
+
+
+def fill_levels(trace):
+    rootidx = _find_root(trace)
+
+    # Table marking whether we have determined that ith row of trace 
+    # can reach its parent
+    can_reach_parent = [False] * len(trace)
+
+    # Mark a special case -- the root of the trace has no parent
+    # so we should never bother trying to find it in _fill_to_root 
+    # hence we mark it as being able to reach its parent
+    can_reach_parent[rootidx] = True
+
+    # _fill_to_root will expand trace, so we iterate over
+    # the original number of rows in trace and make sure 
+    # each of those rows can go to the root, any new added
+    # rows will be checked by _fill_to_root
+    rows = len(trace)
+    for i in range(rows):
+        _fill_to_root(trace, i, can_reach_parent)
 
 
 def rmv_dups(trace):
