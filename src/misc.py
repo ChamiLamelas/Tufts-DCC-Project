@@ -4,6 +4,8 @@ import sys
 import multiprocessing as mp
 import time
 import pickle
+from datetime import timedelta
+from math import ceil
 
 DATA_FOLDER = os.path.join('..', 'data')
 RESULT_FOLDER = os.path.join('..', 'results')
@@ -120,8 +122,7 @@ def save_result_object(path, obj):
 
 
 def prettytime(secs):
-    mins, secs = divmod(secs, 60)
-    return (f"{mins}m " if mins > 0 else "") + f"{secs:.2f}s"
+    return str(timedelta(seconds=ceil(secs)))
 
 
 def debug(str):
@@ -212,4 +213,3 @@ def make_hierarchy(trace):
 
 def nice_display(trace):
     print('\n' + "\n".join(str(row) for row in trace) + '\n')
-

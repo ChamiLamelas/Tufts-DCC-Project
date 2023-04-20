@@ -5,8 +5,13 @@ from collections import defaultdict
 import os
 
 
+def missing_rpc_level(trace):
+    rpcids = {c.rpc(row).count('.') for row in trace}
+    return len(rpcids) < (max(rpcids) - min(rpcids) + 1)
+
+
 def count_missing(trace):
-    return sum(c.um(row) == c.MISSING_MICROSERVICE + c.dm(row) == c.MISSING_MICROSERVICE for row in trace)
+    return sum(((c.um(row) < 0) + (c.dm(row) < 0)) for row in trace)
 
 
 def dup_rpcid_diff_um(trace):
@@ -40,7 +45,7 @@ def save_still_missing(total_orig, total_new, total_still_missing, total_traces,
 
 def main():
     prereqs = ct.collect_prerequisites()
-    files = c.get_csvs()[:2]
+    files = c.get_csvs()
     num_dup_rpcid_diff_um, num_dup_rpcid_diff_dm, total_traces, total_orig_count, total_new_count, total_still_missing = 0, 0, 0, 0, 0, 0
     um_diff_t, dm_diff_t, still_missing_t = None, None, None
     for file in tqdm(files, desc='Scraping Traces', total=len(files)):
@@ -48,6 +53,7 @@ def main():
             total_traces += 1
             total_orig_count += count_missing(trace)
             trace = ct.rmv_dups(trace)
+            ct.fill_levels(trace)
             ct.patch_missing(trace)
             if dup_rpcid_diff_um(trace):
                 num_dup_rpcid_diff_um += 1
@@ -67,6 +73,7 @@ def main():
         num_dup_rpcid_diff_dm, total_traces, dm_diff_t)
     save_still_missing(total_orig_count, total_new_count,
                        total_still_missing, total_traces, still_missing_t)
+
 
 if __name__ == '__main__':
     main()
