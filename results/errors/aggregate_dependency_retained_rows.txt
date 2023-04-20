@@ -1,0 +1,1 @@
+In building aggregate dependency graphs, 10805193/12486634 rows were used.

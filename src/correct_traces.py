@@ -16,8 +16,9 @@ def main():
         c.make_blank_row('0.1.1.1'),
         c.make_blank_row('0.2.1'),
     ]
+    c.nice_display(trace)
     ct.fill_levels(trace)
-    print(trace)
+    c.nice_display(trace)
 
 
 if __name__ == '__main__':

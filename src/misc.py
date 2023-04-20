@@ -148,7 +148,7 @@ def make_target(func):
 
 
 def run_func_on_data_files(func, *extra_args, return_results=True):
-    files = get_csvs()
+    files = get_csvs()[:2]
     ti = time.time()
     processes = [None] * len(files)
     for i, f in enumerate(files):
@@ -201,5 +201,15 @@ def has_condition_match(ls, condition):
             return True
     return False
 
+
 def make_blank_row(rpcid):
     return [-2, -3, rpcid, 'sub', 0]
+
+
+def make_hierarchy(trace):
+    return sorted(trace, key=lambda r: int(rpc(r).replace('.', '')))
+
+
+def nice_display(trace):
+    print('\n' + "\n".join(str(row) for row in trace) + '\n')
+

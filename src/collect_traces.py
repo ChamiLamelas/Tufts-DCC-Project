@@ -16,7 +16,7 @@ def get_trace_data(path, ms_integer_map, trace_integer_map, to_remove):
         lambda x: ms_integer_map[x]).astype('int')
     as_dict = df.groupby([c.TRACE_ID])[c.TRACE_COLUMNS[1:]].apply(
         lambda x: x.values.tolist()).to_dict()
-    return as_dict
+    return {tid: c.make_hierarchy(trace) for tid, trace in as_dict.items()}
 
 
 def collect_prerequisites():
@@ -31,7 +31,8 @@ def collect_prerequisites():
 
 
 def get_child_rows(rpcid, trace):
-    return [row for row in trace if c.rpc(row).startswith(rpcid) and c.rpc(row).count('.') == rpcid.count('.') + 1]
+    child_dots = rpcid.count('.') + 1
+    return [row for row in trace if c.rpc(row).startswith(rpcid) and c.rpc(row).count('.') == child_dots]
 
 
 def get_parent_rows(rpcid, trace):
@@ -44,20 +45,11 @@ def get_parent(rpcid):
     return None if '.' not in rpcid else rpcid[:rpcid.rindex('.')]
 
 
-def get_graph(trace):
-    # Constructs call graph (tree) from trace
-    graph = defaultdict(list)
-    for row in trace:
-        graph[(c.um(row), get_parent(c.rpc(row)))
-              ].append((c.dm(row), c.rpc(row)))
-    return dict(graph)
-
-
 def has_unique_rpcids(trace):
     return len(trace) == len({c.rpc(row) for row in trace})
 
 
-def _find_root(trace):
+def find_root(trace):
     # Identify root by find row in trace that has the minimum number of
     # dots in the RPCID, we return that index
     return min(list(range(len(trace))), key=lambda i: c.rpc(trace[i]).count('.'))
@@ -67,7 +59,7 @@ def _fill_to_root(trace, rowidx, can_reach_parent):
     # We start at some arbitrary row in the trace, first we check
     # if we have determined if the parent is in the trace
     while not can_reach_parent[rowidx]:
-        # If we haven't determined it yet, mark that we have 
+        # If we haven't determined it yet, mark that we have
         # determined it -- as this is what will happen below
         can_reach_parent[rowidx] = True
 
@@ -95,19 +87,19 @@ def _fill_to_root(trace, rowidx, can_reach_parent):
 
 
 def fill_levels(trace):
-    rootidx = _find_root(trace)
+    rootidx = find_root(trace)
 
-    # Table marking whether we have determined that ith row of trace 
+    # Table marking whether we have determined that ith row of trace
     # can reach its parent
     can_reach_parent = [False] * len(trace)
 
     # Mark a special case -- the root of the trace has no parent
-    # so we should never bother trying to find it in _fill_to_root 
+    # so we should never bother trying to find it in _fill_to_root
     # hence we mark it as being able to reach its parent
     can_reach_parent[rootidx] = True
 
     # _fill_to_root will expand trace, so we iterate over
-    # the original number of rows in trace and make sure 
+    # the original number of rows in trace and make sure
     # each of those rows can go to the root, any new added
     # rows will be checked by _fill_to_root
     rows = len(trace)
@@ -158,23 +150,33 @@ def patch_missing(trace):
         # If UM is missing, find the parents of this row in the trace (parents because of the
         # duplicate RPCID possibility)
         if c.um(trace[i]) == c.MISSING_MICROSERVICE:
-            parents = get_parent_rows(c.rpc(trace[i]), trace)
 
-            # If there isnt 1 parent -- cannot fix. Because, there could be multiple
-            # DMs of parent rows
-            if len(parents) != 1:
+            # Get the set of downstream microservices of the parents -- there needs
+            # to be exactly 1 (0 means its the root - if root is missing UM, nothing
+            # we can do; 2+ means the parents could have different DMs hence we can't
+            # fix in this manner)
+            parent_dms = {c.dm(parent) for _, parent in get_parent_rows(
+                c.rpc(trace[i]), trace)}
+
+            if len(parent_dms) != 1:
                 continue
 
-            # Otherwise set UM to be the DM of the 1 and only parent
-            c.set_um(trace[i], c.dm(parents[0]))
+            # Set UM to be 1 and only parent DM
+            c.set_um(trace[i], next(iter(parent_dms)))
 
         # If DM is missing, find the children of the row. Then get the unique not missing UM
-        # of all the children. If there is not 1 non-missing UM of the children, cannot fix
+        # of all the children.
         if c.dm(trace[i]) == c.MISSING_MICROSERVICE:
-            child_ums = list({c.um(row) for row in get_child_rows(
-                c.rpc(trace[i]), trace)}.difference({c.MISSING_MICROSERVICE}))
+
+            # Collect child UMs to fill in the DM -- ignore missing microservices
+            # Again - there should only be 1 if there are 0, there are no children we
+            # can use to fix, if there are multiple child UMs that are not missing
+            # we can't fix either
+            child_ums = {c.um(row) for row in get_child_rows(
+                c.rpc(trace[i]), trace)}.difference({c.MISSING_MICROSERVICE})
+
             if len(child_ums) != 1:
                 continue
 
-            # Otherwise set 1 and only child UM
-            c.set_dm(trace[i], child_ums[0])
+            # Set DM to be 1 and only child UM
+            c.set_dm(trace[i], next(iter(child_ums)))
