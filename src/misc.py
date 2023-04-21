@@ -144,12 +144,14 @@ def write_text(path, text):
 
 def make_target(func):
     def target(f, *extra):
+        debug(f"Running {func.__name__} on {f}")
         save_result_object(f + ".tmp", func(f, *extra))
+        debug(f"{func.__name__} finished on {f}")
     return target
 
 
 def run_func_on_data_files(func, *extra_args, return_results=True):
-    files = get_csvs()[:2]
+    files = get_csvs()
     ti = time.time()
     processes = [None] * len(files)
     for i, f in enumerate(files):
@@ -164,10 +166,12 @@ def run_func_on_data_files(func, *extra_args, return_results=True):
         p.join()
     results = None
     if return_results:
+        debug(f"Collecting results")
         results = list()
         for f in files:
             results.append(read_result_object(f + ".tmp"))
             os.remove(os.path.join(RESULT_FOLDER, f + ".tmp"))
+        debug(f"Done collecting results")
     tf = time.time()
     debug(
         f"Ran {func.__name__} on {len(files)} processes in {prettytime(tf - ti)}")
@@ -213,3 +217,7 @@ def make_hierarchy(trace):
 
 def nice_display(trace):
     print('\n' + "\n".join(str(row) for row in trace) + '\n')
+
+
+def all_equal(ls):
+    return all(ls[0] == e for e in ls)
