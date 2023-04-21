@@ -6,6 +6,7 @@ import time
 import pickle
 from datetime import timedelta
 from math import ceil
+from tqdm import tqdm
 
 DATA_FOLDER = os.path.join('..', 'data')
 RESULT_FOLDER = os.path.join('..', 'results')
@@ -150,28 +151,26 @@ def make_target(func):
     return target
 
 
-def run_func_on_data_files(func, *extra_args, return_results=True):
+def run_func_on_data_files(func, *extra_args, concurrency=os.cpu_count() - 10):
     files = get_csvs()
     ti = time.time()
-    processes = [None] * len(files)
-    for i, f in enumerate(files):
-        if return_results:
-            processes[i] = mp.Process(
-                target=make_target(func), args=(f,) + extra_args)
-        else:
-            processes[i] = mp.Process(
-                target=func, args=(f,) + extra_args)
-        processes[i].start()
-    for p in processes:
-        p.join()
-    results = None
-    if return_results:
-        debug(f"Collecting results")
-        results = list()
-        for f in files:
-            results.append(read_result_object(f + ".tmp"))
-            os.remove(os.path.join(RESULT_FOLDER, f + ".tmp"))
-        debug(f"Done collecting results")
+    processes = [mp.Process(target=make_target(
+        func), args=(f,) + extra_args) for f in files]
+    batches = [processes[i:i+concurrency]
+               for i in range(0, len(processes), concurrency)]
+    for i, b in enumerate(batches):
+        debug(f"Starting batch {i}")
+        bti = time.time()
+        for p in b:
+            p.start()
+        for p in b:
+            p.join()
+        btf = time.time()
+        debug(f"Finished batch {i} in {prettytime(btf - bti)}")
+    results = list()
+    for f in tqdm(files, desc="Collecting results", total=len(files)):
+        results.append(read_result_object(f + ".tmp"))
+        os.remove(os.path.join(RESULT_FOLDER, f + ".tmp"))
     tf = time.time()
     debug(
         f"Ran {func.__name__} on {len(files)} processes in {prettytime(tf - ti)}")

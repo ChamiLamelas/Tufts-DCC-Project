@@ -52,7 +52,8 @@ def get_all_from_file(name):
 
 
 def get_from_each_file():
-    results = c.run_func_on_data_files(get_all_from_file)
+    results = c.run_func_on_data_files(
+        get_all_from_file, concurrency=len(c.get_csvs()))
     called_by, calling, traces, microservices = dict(), dict(), dict(), set()
     total_rows, retained_rows = 0, 0
     for (result, result_total_rows, result_retained_rows) in tqdm(results, desc="Merging Graph, Trace, Microservice Data (single process)", total=len(results)):

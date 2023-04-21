@@ -2,13 +2,36 @@ import matplotlib.pyplot as plt
 import misc as c
 import os
 from scipy.stats import pearsonr
+import networkx as nx
 
 CALL_DISTRIBUTIONS = 'call_distributions'
 SUMMARY_STATISTICS = 'summary_statistics'
 CORRELATIONS = 'correlations'
 
 
+def plot_death_star(calling):
+    path = os.path.join(c.RESULT_FOLDER, CALL_DISTRIBUTIONS, 'deathstar.png')
+    c.prep_path(path)
+    g = nx.DiGraph()
+    plt.figure()
+    for u, adj in calling.items():
+        # if len(adj) > 1:
+        for v in adj:
+            g.add_edge(u, v)
+    print(g.number_of_nodes(), len(calling))
+    options = {
+        "node_color": "black",
+        "node_size": 1,
+        "edge_color": "gray",
+        "linewidths": 0,
+        "width": 0.1,
+    }
+    nx.draw_circular(g, **options)
+    plt.savefig(path)
+
+
 def plot_trace_histogram(traces):
+    print(sum(v < 10000 for v in traces.values()), max(traces.values()))
     path = os.path.join(c.RESULT_FOLDER, CALL_DISTRIBUTIONS, 'traces.png')
     c.prep_path(path)
     plt.figure()
@@ -123,6 +146,7 @@ def main():
     calculate_called_by1(called_by)
     calculate_connected_components(called_by, calling)
     calculate_correlation(called_by, calling, traces)
+    plot_death_star(calling)
 
 
 if __name__ == '__main__':

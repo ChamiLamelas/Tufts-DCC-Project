@@ -78,8 +78,7 @@ def per_file_func(file, prereqs):
 
 
 def main():
-    prereqs = ct.collect_prerequisites()
-    results = c.run_func_on_data_files(per_file_func, prereqs)
+    results = c.run_func_on_data_files(per_file_func, ct.collect_prerequisites())
     num_dup_rpcid_diff_um, num_dup_rpcid_diff_dm, total_traces, total_orig_count, total_new_count, total_still_missing, total_missing_level = 0, 0, 0, 0, 0, 0, 0
     um_diff_t, dm_diff_t, still_missing_t, missing_level_t = None, None, None, None
     for result in tqdm(results, desc="Merging results", total=len(results)):

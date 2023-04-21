@@ -62,21 +62,25 @@ def save_nonzero_root(nonzero_count, total_traces):
                  f"{nonzero_count}/{total_traces} have nonzero root RPC IDs.")
 
 
+def per_file_func(file, prereqs):
+    traces = list(ct.get_trace_data(file, *prereqs).values())
+    miss1, missboth = missing_microservice_ids(traces)
+    return [len(traces), rpcids_unique(traces), traces_with_nonzero_root(traces), miss1, missboth, max_concurrency(traces), trace_depth(traces)]
+
+
 def main():
-    prereqs = ct.collect_prerequisites()
+    results = c.run_func_on_data_files(
+        per_file_func, ct.collect_prerequisites())
     total_missing_one, total_missing_both, total_traces, total_uniq_rpcids, total_nonzero_root = 0, 0, 0, 0, 0
     concurrencies, depths = list(), list()
-    files = c.get_csvs()
-    for file in tqdm(files, desc='Scraping Traces', total=len(files)):
-        traces = list(ct.get_trace_data(file, *prereqs).values())
-        total_traces += len(traces)
-        total_uniq_rpcids += rpcids_unique(traces)
-        miss1, missboth = missing_microservice_ids(traces)
-        total_nonzero_root += traces_with_nonzero_root(traces)
-        total_missing_one += miss1
-        total_missing_both += missboth
-        concurrencies.extend(max_concurrency(traces))
-        depths.extend(trace_depth(traces))
+    for result in tqdm(results, desc="Merging results", total=len(results)):
+        total_traces += result[0]
+        total_uniq_rpcids += result[1]
+        total_nonzero_root += result[2]
+        total_missing_one += result[3]
+        total_missing_both += result[4]
+        concurrencies.extend(result[5])
+        depths.extend(result[6])
     save_rpcids_unique(total_uniq_rpcids, total_traces)
     save_missing_microservice_ids(
         total_missing_one, total_missing_both, total_traces)

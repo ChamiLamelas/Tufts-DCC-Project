@@ -5,8 +5,8 @@ from collections import defaultdict
 
 
 def get_trace_data(path, ms_integer_map, trace_integer_map, to_remove):
-    df = pd.read_csv(os.path.join(c.DATA_FOLDER, path))
-    df = df[c.TRACE_COLUMNS]
+    df = pd.read_csv(os.path.join(c.DATA_FOLDER, path))[c.TRACE_COLUMNS]
+    df[c.RPC_ID] = df[c.RPC_ID].str.replace(":", "")
     df[c.TRACE_ID] = df[c.TRACE_ID].apply(
         lambda x: trace_integer_map[x]).astype('int')
     df = df[~df[c.TRACE_ID].isin(to_remove)]
