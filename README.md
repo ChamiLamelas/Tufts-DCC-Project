@@ -1,5 +1,9 @@
 # Alibaba Trace Analysis
 
+## Hardware
+
+CloudLab c220g5
+
 ## Dataset
 
 [github](https://github.com/alibaba/clusterdata/tree/master/cluster-trace-microservices-v2021)

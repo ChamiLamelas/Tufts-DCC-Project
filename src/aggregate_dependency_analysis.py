@@ -3,30 +3,39 @@ import misc as c
 import os
 from scipy.stats import pearsonr
 import networkx as nx
+from tqdm import tqdm
 
 CALL_DISTRIBUTIONS = 'call_distributions'
 SUMMARY_STATISTICS = 'summary_statistics'
 CORRELATIONS = 'correlations'
 
 
-def plot_death_star(calling):
+def normalize(ls):
+    m = max(ls)
+    return [max(min(e/m, 1), 0) for e in ls]
+
+
+def plot_death_star(calling, called_by):
     path = os.path.join(c.RESULT_FOLDER, CALL_DISTRIBUTIONS, 'deathstar.png')
     c.prep_path(path)
     g = nx.DiGraph()
     plt.figure()
+    edgelist, alphas = list(), list()
     for u, adj in calling.items():
-        # if len(adj) > 1:
         for v in adj:
-            g.add_edge(u, v)
-    print(g.number_of_nodes(), len(calling))
+            if len(called_by[v]) > 1:
+                g.add_edge(u, v)
+                edgelist.append((u, v))
+                alphas.append(len(called_by[v]))
+    alphas = normalize(alphas)
     options = {
         "node_color": "black",
-        "node_size": 1,
-        "edge_color": "gray",
-        "linewidths": 0,
-        "width": 0.1,
+        "node_size": 5,
     }
-    nx.draw_circular(g, **options)
+    node_pos = nx.circular_layout(g)
+    nx.draw_networkx_nodes(g, pos=node_pos, **options)
+    for edge, alpha in tqdm(zip(edgelist, alphas), total=len(edgelist), desc="Drawing edges"):
+        nx.draw_networkx_edges(g, pos=node_pos, edgelist=[edge], alpha=alpha)
     plt.savefig(path)
 
 
@@ -146,7 +155,7 @@ def main():
     calculate_called_by1(called_by)
     calculate_connected_components(called_by, calling)
     calculate_correlation(called_by, calling, traces)
-    plot_death_star(calling)
+    plot_death_star(calling, called_by)
 
 
 if __name__ == '__main__':
