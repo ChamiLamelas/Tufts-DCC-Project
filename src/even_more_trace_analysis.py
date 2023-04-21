@@ -5,9 +5,6 @@ import os
 from tqdm import tqdm
 
 
-def missing_rpc_level(trace):
-    rpcids = {c.rpc(row).count('.') for row in trace}
-    return len(rpcids) < (max(rpcids) - min(rpcids) + 1)
 
 
 def count_missing(trace):
@@ -65,7 +62,7 @@ def per_file_func(file, prereqs):
             num_dup_rpcid_diff_dm += 1
             if dm_diff_t is None:
                 dm_diff_t = trace
-        if missing_rpc_level(trace):
+        if ct.missing_levels(trace):
             total_missing_level += 1
             if missing_level_t is None:
                 missing_level_t = trace

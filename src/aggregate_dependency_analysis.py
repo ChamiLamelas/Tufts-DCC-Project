@@ -155,7 +155,7 @@ def main():
     calculate_called_by1(called_by)
     calculate_connected_components(called_by, calling)
     calculate_correlation(called_by, calling, traces)
-    plot_death_star(calling, called_by)
+    # plot_death_star(calling, called_by)
 
 
 if __name__ == '__main__':

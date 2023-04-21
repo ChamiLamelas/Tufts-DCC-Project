@@ -7,6 +7,7 @@ import pickle
 from datetime import timedelta
 from math import ceil
 from tqdm import tqdm
+from collections import defaultdict
 
 DATA_FOLDER = os.path.join('..', 'data')
 RESULT_FOLDER = os.path.join('..', 'results')
@@ -22,6 +23,7 @@ RPCTYPE_ID = 'rpctype'
 AGGREGATE_DEPENDENCY = 'aggregate_dependency'
 TRACES = 'traces'
 ERRORS = 'errors'
+GRAPHS = 'graphs'
 
 CALLED_BY_FILE = os.path.join(AGGREGATE_DEPENDENCY, 'called_by.pkl')
 CALLING_FILE = os.path.join(AGGREGATE_DEPENDENCY, 'calling.pkl')
@@ -151,8 +153,10 @@ def make_target(func):
     return target
 
 
-def run_func_on_data_files(func, *extra_args, concurrency=os.cpu_count() - 10):
+def run_func_on_data_files(func, *extra_args, concurrency=os.cpu_count() - 10, fileset=None, ignore_result=False):
     files = get_csvs()
+    if fileset is not None:
+        files = [files[i] for i in fileset]
     ti = time.time()
     processes = [mp.Process(target=make_target(
         func), args=(f,) + extra_args) for f in files]
@@ -167,6 +171,8 @@ def run_func_on_data_files(func, *extra_args, concurrency=os.cpu_count() - 10):
             p.join()
         btf = time.time()
         debug(f"Finished batch {i} in {prettytime(btf - bti)}")
+    if ignore_result:
+        return None
     results = list()
     for f in tqdm(files, desc="Collecting results", total=len(files)):
         results.append(read_result_object(f + ".tmp"))
@@ -220,3 +226,29 @@ def nice_display(trace):
 
 def all_equal(ls):
     return all(ls[0] == e for e in ls)
+
+
+def iscontiguous(s):
+    return s == set(range(min(s), max(s) + 1))
+
+
+def flatten(ls):
+    return [elem for sublist in ls for elem in sublist]
+
+
+def get_idxs():
+    if len(sys.argv) == 1:
+        return None
+    arg = sys.argv[1]
+    try:
+        if '-' in arg:
+            spl = arg.split('-')
+            start = int(spl[0])
+            end = int(spl[1])+1
+            return list(range(start, end))
+        elif ',' in arg:
+            return [int(e) for e in arg.split(',')]
+        return int(arg)
+    except ValueError as e:
+        raise ValueError(
+            'Must specify args:\n\t- A single int\n\t- A list of ints separated by , (no space)\n\t- A range of ints specified as int1-int2\n')

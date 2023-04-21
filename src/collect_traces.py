@@ -49,6 +49,20 @@ def has_unique_rpcids(trace):
     return len(trace) == len({c.rpc(row) for row in trace})
 
 
+def dup_rpcid_diff_um(trace):
+    dups = defaultdict(list)
+    for row in trace:
+        dups[c.rpc(row)].append(row)
+    return c.has_condition_match(dups.values(), lambda v: len({c.um(row) for row in v}) > 1)
+
+
+def dup_rpcid_diff_dm(trace):
+    dups = defaultdict(list)
+    for row in trace:
+        dups[c.rpc(row)].append(row)
+    return c.has_condition_match(dups.values(), lambda v: len({c.dm(row) for row in v}) > 1)
+
+
 def find_roots(trace):
     # Identify all indices with minimum number of dots in rpcid
 
@@ -157,7 +171,7 @@ def rmv_dups(trace):
 def patch_missing(trace):
     for i in range(len(trace)):
         # Row isn't missing anything - skip it
-        if c.dm(trace[i]) < 0 and c.um(trace[i]) < 0:
+        if c.dm(trace[i]) >= 0 and c.um(trace[i]) >= 0:
             continue
 
         # If UM is missing, find the parents of this row in the trace (parents because of the
@@ -193,3 +207,16 @@ def patch_missing(trace):
 
             # Set DM to be 1 and only child UM
             c.set_dm(trace[i], next(iter(child_ums)))
+
+def missing_levels(trace):
+    rpcids = {c.rpc(row) for row in trace}
+    dotcounts = defaultdict(set)
+    for rpcid in rpcids:
+        for other in rpcids:
+            if rpcid.startswith(other):
+                dotcounts[rpcid].add(other.count('.'))
+    return any(not c.iscontiguous(v) for v in dotcounts.values())
+
+
+def count_missing(trace):
+    return sum(((c.um(row) < 0) + (c.dm(row) < 0)) for row in trace)
