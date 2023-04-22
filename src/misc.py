@@ -173,16 +173,15 @@ def run_func_on_data_files(func, *extra_args, concurrency=os.cpu_count() - 10, f
             p.join()
         btf = time.time()
         debug(f"Finished batch {i} in {prettytime(btf - bti)}")
-    if ignore_result:
-        return None
     results = list()
     for f in tqdm(files, desc="Collecting results", total=len(files)):
-        results.append(read_result_object(f + ".tmp"))
+        if not ignore_result:
+            results.append(read_result_object(f + ".tmp"))
         os.remove(os.path.join(RESULT_FOLDER, f + ".tmp"))
     tf = time.time()
     debug(
         f"Ran {func.__name__} on {len(files)} processes in {prettytime(tf - ti)}")
-    return results
+    return None if ignore_result else results
 
 
 def get_cmdline_arg(func=None):
