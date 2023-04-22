@@ -148,8 +148,10 @@ def write_text(path, text):
 def make_target(func):
     def target(f, *extra):
         debug(f"Running {func.__name__} on {f}")
+        ti = time.time()
         save_result_object(f + ".tmp", func(f, *extra))
-        debug(f"{func.__name__} finished on {f}")
+        tf = time.time()
+        debug(f"{func.__name__} finished on {f} in {prettytime(tf - ti)}")
     return target
 
 
