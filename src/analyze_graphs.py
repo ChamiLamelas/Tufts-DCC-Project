@@ -7,25 +7,26 @@ from karateclub import Graph2Vec
 # for PAC
 from sklearn.decomposition import PCA
 import numpy as np
-# for plotting
+# for storing and plotting
+import csv
 from pathlib import Path
 import matplotlib.pyplot as plt
 
 
 def main():
     # get list of graphs from pkl files
-    files = [e.path for e in os.scandir(
+    files = [e for e in os.scandir(
         os.path.join(c.RESULT_FOLDER, c.GRAPHS)) if e.is_file() and e.name.endswith('.pkl')]
-    graphs = c.read_result_object(files[0]) # [tracedataList, edgeList]
+    graphs = c.read_result_object(files[0].path) # [tracedataList, edgeList]
     # print(f"graph num in graphs:\n{len(graphs)}")
     # print(f"first graph in graphs:\n{graphs[0]}")
 
     # embedding: try 10 first
-    nx_graphs = [nx.DiGraph(edgelist[1]) for edgelist in graphs[:11]]
+    nx_graphs = [nx.DiGraph(edgelist[1]) for edgelist in graphs]
     graph2vec = Graph2Vec(dimensions=20, wl_iterations=2, min_count=5, epochs=10)
     graph2vec.fit(nx_graphs)
     embeddings = graph2vec.get_embedding()
-    print(f"embeddings for list nx_graphs: \n{embeddings}")
+    # print(f"embeddings for list nx_graphs: \n{embeddings}")
 
     # construct matrix
     mat = embeddings
@@ -34,12 +35,19 @@ def main():
     pca = PCA(n_components=2, svd_solver='arpack')
     X = pca.fit(mat).transform(mat)
     # Percentage of variance explained for each components
-    print(
-        "explained variance ratio (first two components): %s"
-        % {str(pca.explained_variance_ratio_)}
-    )
-    print(f"output of pca:\n{X}")
-    
+    # print(
+    #     "explained variance ratio (first two components): %s"
+    #     % {str(pca.explained_variance_ratio_)}
+    # )
+    # print(f"output of pca:\n{X}")
+
+    # save results
+    print(f"In {files[0].name}:\nshape of embedding:{embeddings.shape},\nmatrix: {mat.shape},\npca features: {X.shape}")
+    embed_path = os.path.join(c.RESULT_FOLDER, 'embedding')
+    with open(os.path.join(embed_path, files[0].name+'.csv'), 'w', newline='') as f:
+        writer = csv.writer(f, delimiter=',', lineterminator='\n')
+        for row in X:
+            writer.writerow(row)
 
 
 if __name__ == '__main__':
