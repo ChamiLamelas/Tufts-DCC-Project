@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 import misc as c
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 
 def get_trace_data(path, ms_integer_map, trace_integer_map, to_remove):
@@ -208,6 +208,7 @@ def patch_missing(trace):
             # Set DM to be 1 and only child UM
             c.set_dm(trace[i], next(iter(child_ums)))
 
+
 def missing_levels(trace):
     rpcids = {c.rpc(row) for row in trace}
     dotcounts = defaultdict(set)
@@ -220,3 +221,22 @@ def missing_levels(trace):
 
 def count_missing(trace):
     return sum(((c.um(row) < 0) + (c.dm(row) < 0)) for row in trace)
+
+
+def get_max_concurrency(trace_tree_rpcs):
+    return max(Counter(rpc.count('.') for rpc in trace_tree_rpcs).values())
+
+
+def get_depth(trace_tree_rpcs):
+    dot_counts = [rpc.count('.') for rpc in trace_tree_rpcs]
+    return max(dot_counts) - min(dot_counts) + 1
+
+
+def get_max_concurrency_and_depth(trace):
+    roots = find_roots(trace)
+    trees = defaultdict(list)
+    for row in trace:
+        for rootidx in roots:
+            if c.rpc(row).startswith(c.rpc(trace[rootidx])):
+                trees[c.rpc(trace[rootidx])].append(c.rpc(row))
+    return max(get_max_concurrency(tree) for tree in trees.values()), max(get_depth(tree) for tree in trees.values())

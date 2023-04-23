@@ -31,10 +31,15 @@ def plot_depth_histogram():
     plt.grid()
     plt.savefig(path)
 
+def lookat_concurrencies():
+    concurrencies = c.read_result_object(c.CONCURRENCY_FILE)
+    print(sum(cn < 10 for cn in concurrencies))
+
 
 def main():
-    plot_concurrency_histogram()
-    plot_depth_histogram()
+    # plot_concurrency_histogram()
+    # plot_depth_histogram()
+    lookat_concurrencies()
 
 
 if __name__ == '__main__':

@@ -24,6 +24,7 @@ AGGREGATE_DEPENDENCY = 'aggregate_dependency'
 TRACES = 'traces'
 ERRORS = 'errors'
 GRAPHS = 'graphs'
+EMBEDDINGS = 'embeddings'
 
 CALLED_BY_FILE = os.path.join(AGGREGATE_DEPENDENCY, 'called_by.pkl')
 CALLING_FILE = os.path.join(AGGREGATE_DEPENDENCY, 'calling.pkl')
@@ -38,8 +39,9 @@ TRACE_COLUMNS = [TRACE_ID, UPSTREAM_ID,
 
 MISSING_MICROSERVICE = -1
 
-CONCURRENCY_FILE = os.path.join(TRACES, 'concurrency.pkl')
-DEPTH_FILE = os.path.join(TRACES, 'depths.pkl')
+
+CONCURRENCIES_AND_DEPTHS_FILE = os.path.join(
+    TRACES, 'concurrencies_and_depths.pkl')
 
 NICE_TRACES_FILE = os.path.join(DATA_FOLDER, "nice_traces.pkl")
 NON_UNIQ_TRACES_FILE = os.path.join(DATA_FOLDER, "not_uniq_rpcid_traces.pkl")
@@ -155,8 +157,7 @@ def make_target(func):
     return target
 
 
-def run_func_on_data_files(func, *extra_args, concurrency=os.cpu_count() - 10, fileset=None, ignore_result=False):
-    files = get_csvs()
+def run_func_on_data_files(func, *extra_args, concurrency=os.cpu_count() - 10, fileset=None, ignore_result=False, files=get_csvs()):
     if fileset is not None:
         files = [files[i] for i in fileset]
     ti = time.time()
@@ -249,7 +250,7 @@ def get_idxs():
             return list(range(start, end))
         elif ',' in arg:
             return [int(e) for e in arg.split(',')]
-        return int(arg)
+        return [int(arg)]
     except ValueError as e:
         raise ValueError(
             'Must specify args:\n\t- A single int\n\t- A list of ints separated by , (no space)\n\t- A range of ints specified as int1-int2\n')

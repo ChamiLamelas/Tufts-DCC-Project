@@ -37,6 +37,8 @@ def save_missing_microservice_ids(missing_one_ms, missing_both_ms, total_traces)
                               "traces_with_missing_microservice_ids.txt"), "\n".join(out))
 
 
+# This is no longer correct now that we identified traces can have multiple roots! 
+# What is concurrency of 2 root tree? Not sure how to compute
 def max_concurrency(traces):
     return [max(Counter(c.rpc(row).count('.') for row in trace).values()) for trace in traces]
 
@@ -45,6 +47,8 @@ def save_max_concurrency(trace_widths):
     c.save_result_object(c.CONCURRENCY_FILE, trace_widths)
 
 
+# This is no longer correct now that we identified traces can have multiple roots! 
+# The depth of trace 0 -> 0.1  9.1.1 -> 9.1.1.2 does not depend on 9.1.1.2 (3 dots)
 def trace_depth(traces):
     return [max(c.rpc(row).count('.') for row in trace) for trace in traces]
 
