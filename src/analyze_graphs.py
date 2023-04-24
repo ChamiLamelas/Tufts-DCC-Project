@@ -30,7 +30,7 @@ def main():
         os.path.join(c.RESULT_FOLDER, c.GRAPHS)) if e.is_file() and e.name.endswith('.pkl')]
     
     # loop over each pkl file as graphs
-    num_files = 50
+    num_files = 145
     services = defaultdict(list)
     for f in files[:num_files+1]:
         graphs = c.read_result_object(f.path) # [tracedataList, edgeList]

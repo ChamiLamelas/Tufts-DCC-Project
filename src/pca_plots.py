@@ -19,7 +19,7 @@ def plot_eigenvecs_clusters(file_name):
     plt.figure()
     for i, k in enumerate(eigen_vecs):
         plt.scatter(eigen_vecs[k][0], eigen_vecs[k][1], s=1, c=colors[i], label=k)
-    plt.legend(loc='best', prop={'size': 8})
+    plt.legend(loc='best', prop={'size': 5})
     plt.title("PCA Eigenvectors Colored By Service")
     plt.grid()
     plt.savefig(path)
@@ -33,9 +33,11 @@ def plot_eigenvecs_clusters(file_name):
         plt.title("PCA Eigenvector Clusters for Microservice "+k)
         plt.grid()
         plt.savefig(path)
+    print(f"... plot scatters for {len(eigen_vecs)} microservices ...")
+
 
 def main():
-    plot_eigenvecs_clusters('10_pkl_files_pca')
+    plot_eigenvecs_clusters('1_pkl_files_pca')
 
 if __name__ == '__main__':
     main()
