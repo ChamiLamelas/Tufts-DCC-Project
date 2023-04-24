@@ -37,7 +37,7 @@ def plot_eigenvecs_clusters(file_name):
 
 
 def main():
-    plot_eigenvecs_clusters('1_pkl_files_pca')
+    plot_eigenvecs_clusters('145_pkl_files_pca')
 
 if __name__ == '__main__':
     main()
