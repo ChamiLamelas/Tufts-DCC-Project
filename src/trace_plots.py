@@ -1,12 +1,10 @@
 import matplotlib.pyplot as plt
 import misc as c
 import os
-import json
-import numpy as np
+import time
 
 
-def plot_concurrency_histogram():
-    concurrencies = c.read_result_object(c.CONCURRENCY_FILE)
+def plot_concurrency_histogram(concurrencies):
     path = os.path.join(c.RESULT_FOLDER, c.TRACES, 'concurrencies.png')
     c.prep_path(path)
     plt.figure()
@@ -20,8 +18,7 @@ def plot_concurrency_histogram():
     plt.savefig(path)
 
 
-def plot_depth_histogram():
-    depth = c.read_result_object(c.DEPTH_FILE)
+def plot_depth_histogram(depth):
     path = os.path.join(c.RESULT_FOLDER, c.TRACES, 'depths.png')
     c.prep_path(path)
     plt.figure()
@@ -33,15 +30,20 @@ def plot_depth_histogram():
     plt.grid()
     plt.savefig(path)
 
-def lookat_concurrencies():
-    concurrencies = c.read_result_object(c.CONCURRENCY_FILE)
-    print(sum(cn < 10 for cn in concurrencies))
-
 
 def main():
-    # plot_concurrency_histogram()
-    # plot_depth_histogram()
-    lookat_concurrencies()
+    # Takes about 3 minutes
+    concurrencies_depths = c.read_result_object(
+        c.CONCURRENCIES_AND_DEPTHS_FILE)
+    concurrencies = [e[0] for ls in concurrencies_depths for e in ls]
+    depths = [e[1] for ls in concurrencies_depths for e in ls]
+    print(sum(cn < 2 for cn in concurrencies))
+    # ti = time.time()
+    # plot_concurrency_histogram(concurrencies)
+    # print(f"concurrencies plotted {c.prettytime(time.time() - ti)}")
+    # ti = time.time()
+    # plot_depth_histogram(depths)
+    # print(f"depths plotted {c.prettytime(time.time() - ti)}")
 
 
 if __name__ == '__main__':
