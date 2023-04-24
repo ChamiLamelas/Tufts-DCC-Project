@@ -57,9 +57,10 @@ def main():
 
     # save results as a json file
     embed_path = os.path.join(c.RESULT_FOLDER, c.EMBEDDINGS)
-    with open(os.path.join(embed_path, files[0].name[:-4]+'.json'), 'w') as f:
+    json_name = files[0].name[:-11]+'.pca.json'
+    with open(os.path.join(embed_path, json_name), 'w') as f:
         json.dump(eigenVecs, f, indent=4)
-    print(f"Saving to {os.path.join(embed_path, files[0].name[:-4]+'.json')}")
+    print(f"Saving to {os.path.join(embed_path, json_name)}")
     # raise Exception("Breakpoint!")
 
 
