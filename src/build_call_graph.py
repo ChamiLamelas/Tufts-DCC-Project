@@ -14,19 +14,24 @@ def build_call_graph_no_ms(trace):
     ROOT_PREFIX = "~"
     graph = defaultdict(list)
     roots = set(ct.find_roots(trace))
+    rpcdups = defaultdict(lambda: 0)
+    microservices = dict()
     for i, row in enumerate(trace):
         if i in roots:
-            graph[ROOT_PREFIX + str(i)].append(c.rpc(row))
+            rpckey = ROOT_PREFIX + str(i)
+            microservices[rpckey] = c.um(row)
         else:
-            graph[ct.get_parent(c.rpc(row))].append(c.rpc(row))
-    for v in graph.values():
-        for i in range(len(v)):
-            first = v.index(v[i])
-            if first < i:
-                v[i] += f'_{i - first}'
-    indexing = {k: i for i, k in enumerate(
-        set(graph).union(set(v for adj in graph.values() for v in adj)))}
-    return [(indexing[k], indexing[v]) for k, adj in graph.items() for v in adj]
+            rpckey = ct.get_parent(c.rpc(row))
+        newrpc = c.rpc(row)
+        if rpcdups[newrpc] > 0:
+            newrpc += f"_{rpcdups[newrpc]}"
+        rpcdups[c.rpc(row)] += 1
+        microservices[newrpc] = c.dm(row)
+        graph[rpckey].append(newrpc)
+    indexing = {k: i for i, k in enumerate(microservices)}
+    edgelist = [(indexing[k], indexing[v])
+                for k, adj in graph.items() for v in adj]
+    return edgelist, list(microservices.values())
 
 
 def build_call_graph_ms(trace):
@@ -76,20 +81,21 @@ if __name__ == '__main__':
 
     print("=" * 10)
 
-    very_weird_trace = c.make_hierarchy([
+    very_weird_trace = [
         [-1, -1, '9.1.1.1', 'mc', 2],
         [2, 3, '0.1.1', 'rpc', 3],
         [-1, 1, '0', 'rpc', 1],
         [2, 3, '0.1.1', 'rpc', 3],
         [3, 4, '0.1.1.1', 'rpc', 4],
         [5, 6, '9.1.1', 'mc', 1],
-        [2, 3, '0.1.1', 'rpc', -3]
-    ])
+        [2, 3, '0.1.1', 'rpc', -3],
+        [2, 3, '0.1.2', 'rpc', 4],
+        [2, 3, '0.1.1', 'rpc', 4]
+    ]
+    very_weird_trace = c.make_hierarchy(very_weird_trace)
     c.nice_display(very_weird_trace)
     very_weird_trace = ct.rmv_dups(very_weird_trace)
-    c.nice_display(very_weird_trace)
     ct.fill_levels(very_weird_trace)
-    c.nice_display(very_weird_trace)
     ct.patch_missing(very_weird_trace)
-    c.nice_display(very_weird_trace)
-    print(build_call_graph_no_ms(very_weird_trace))
+    callgraph, microservices = build_call_graph_no_ms(very_weird_trace)
+    print(callgraph, microservices, sep='\n')

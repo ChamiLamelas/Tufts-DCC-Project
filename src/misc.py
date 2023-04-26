@@ -24,7 +24,6 @@ AGGREGATE_DEPENDENCY = 'aggregate_dependency'
 TRACES = 'traces'
 ERRORS = 'errors'
 GRAPHS = 'graphs'
-EMBEDDINGS = 'embeddings'
 
 CALLED_BY_FILE = os.path.join(AGGREGATE_DEPENDENCY, 'called_by.pkl')
 CALLING_FILE = os.path.join(AGGREGATE_DEPENDENCY, 'calling.pkl')
@@ -38,7 +37,6 @@ TRACE_COLUMNS = [TRACE_ID, UPSTREAM_ID,
                  DOWNSTREAM_ID, RPC_ID, RPCTYPE_ID, TIMESTAMP_ID]
 
 MISSING_MICROSERVICE = -1
-
 
 CONCURRENCIES_AND_DEPTHS_FILE = os.path.join(
     TRACES, 'concurrencies_and_depths.pkl')
@@ -254,3 +252,13 @@ def get_idxs():
     except ValueError as e:
         raise ValueError(
             'Must specify args:\n\t- A single int\n\t- A list of ints separated by , (no space)\n\t- A range of ints specified as int1-int2\n')
+
+
+def first_and_last(ls, target):
+    first, last = None, None
+    for i, e in enumerate(ls):
+        if e == target:
+            if first is None:
+                first = i
+            last = i
+    return first, last
