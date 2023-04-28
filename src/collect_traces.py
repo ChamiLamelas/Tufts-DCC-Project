@@ -2,6 +2,7 @@ import pandas as pd
 import os
 import misc as c
 from collections import defaultdict, Counter
+import sys
 
 
 def get_trace_data(path, ms_integer_map, trace_integer_map, to_remove):
@@ -63,17 +64,16 @@ def dup_rpcid_diff_dm(trace):
     return c.has_condition_match(dups.values(), lambda v: len({c.dm(row) for row in v}) > 1)
 
 
+def isancestor(rpc1, rpc2):
+    return rpc1.startswith(rpc2) and rpc1[len(rpc2):].find('.') == 0
+
+
 def find_roots(trace):
     # Identify all indices with minimum number of dots in rpcid
 
     no_parents = [i for i, row in enumerate(
         trace) if len(get_parent_rows(c.rpc(row), trace)) == 0]
-    roots = list()
-    for i in no_parents:
-        i_dots = c.rpc(trace[i]).count('.')
-        if not any((c.rpc(trace[i]).startswith(c.rpc(trace[j])) and i_dots > c.rpc(trace[j]).count('.')) for j in no_parents):
-            roots.append(i)
-    return roots
+    return [i for i in no_parents if not any(isancestor(c.rpc(trace[i]), c.rpc(trace[j])) for j in no_parents)]
 
 
 def _fill_to_root(trace, rowidx, can_reach_parent, min_root_level):
@@ -237,6 +237,6 @@ def get_max_concurrency_and_depth(trace):
     trees = defaultdict(list)
     for row in trace:
         for rootidx in roots:
-            if c.rpc(row).startswith(c.rpc(trace[rootidx])):
+            if isancestor(c.rpc(row), c.rpc(trace[rootidx])):
                 trees[c.rpc(trace[rootidx])].append(c.rpc(row))
     return max(get_max_concurrency(tree) for tree in trees.values()), max(get_depth(tree) for tree in trees.values())

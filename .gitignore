@@ -5,6 +5,7 @@ data/*
 *.pkl
 screenlog.0
 debug.py
+*.stderr
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -24,6 +24,7 @@ AGGREGATE_DEPENDENCY = 'aggregate_dependency'
 TRACES = 'traces'
 ERRORS = 'errors'
 GRAPHS = 'graphs'
+GRAPHS_V2 = 'graphs_v2'
 
 CALLED_BY_FILE = os.path.join(AGGREGATE_DEPENDENCY, 'called_by.pkl')
 CALLING_FILE = os.path.join(AGGREGATE_DEPENDENCY, 'calling.pkl')
@@ -217,6 +218,9 @@ def make_blank_row(rpcid):
 
 
 def make_hierarchy(trace):
+    # this is susceptible to integer overflow for a really long rpcid
+    # potential fix would be to sort by "digit" where "digit" is
+    # parts of the rpcid between the periods
     return sorted(trace, key=lambda r: int(rpc(r).replace('.', '')))
 
 

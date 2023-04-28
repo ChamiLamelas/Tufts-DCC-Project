@@ -1,20 +1,27 @@
+import sys
 import misc as c
 import collect_traces as ct
-from collections import defaultdict
+from collections import defaultdict, namedtuple, Counter
+
+CallGraph = namedtuple('CallGraph', ['trace', 'edgelist', 'nodefeatures'])
 
 
 def no_ms_preprocess(trace):
-    trace = ct.rmv_dups(trace)
+    trace = ct.rmv_dups(c.make_hierarchy(trace))
     ct.fill_levels(trace)
     ct.patch_missing(trace)
     return None if ct.dup_rpcid_diff_dm(trace) or ct.dup_rpcid_diff_um(trace) else trace
 
 
 def build_call_graph_no_ms(trace):
+    orig_trace = trace
+    trace = no_ms_preprocess(trace)
+    if trace is None:
+        return None
     ROOT_PREFIX = "~"
     graph = defaultdict(list)
     roots = set(ct.find_roots(trace))
-    rpcdups = defaultdict(lambda: 0)
+    rpcdups = Counter()
     microservices = dict()
     for i, row in enumerate(trace):
         if i in roots:
@@ -31,7 +38,7 @@ def build_call_graph_no_ms(trace):
     indexing = {k: i for i, k in enumerate(microservices)}
     edgelist = [(indexing[k], indexing[v])
                 for k, adj in graph.items() for v in adj]
-    return edgelist, list(microservices.values())
+    return CallGraph(orig_trace, edgelist, list(microservices.values()))
 
 
 def build_call_graph_ms(trace):
@@ -97,5 +104,6 @@ if __name__ == '__main__':
     very_weird_trace = ct.rmv_dups(very_weird_trace)
     ct.fill_levels(very_weird_trace)
     ct.patch_missing(very_weird_trace)
-    callgraph, microservices = build_call_graph_no_ms(very_weird_trace)
-    print(callgraph, microservices, sep='\n')
+    c.nice_display(very_weird_trace)
+    callgraph = build_call_graph_no_ms(very_weird_trace)
+    print(callgraph)
