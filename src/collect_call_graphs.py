@@ -7,7 +7,9 @@ import os
 def per_file_func(file, prereqs):
     result = list()
     for _, trace in ct.get_trace_data(file, *prereqs).items():
-        result.append(bcg.build_call_graph_no_ms(trace))
+        graph = bcg.build_call_graph_no_ms(trace)
+        if graph is not None:
+            result.append(graph)
     c.save_result_object(os.path.join(c.GRAPHS_V2, file + '.graphs.pkl'), result)
 
 
