@@ -31,6 +31,10 @@ CloudLab c220g5
     * This produces statistics on errors in the trace files that were collected by above file.
     * This takes 15 minutes to run on CloudLab.
 
+Graph Embedding & Eigenvectors 
+* Run `analyze_graphs.py` to obtain eigenvectors of each root services, depending on the call graph structures rooted from that microservice. The results would be stored in a single json file name `%{file_num}_pkl_fils_pca.json` under `results/embeddings/`, where `%{file_num}` is the number of okl files processed in the program.
+* Then run `pca_plots.py`, which plots a series of images for each microservice, under `results/embeddings`, as well as one figure putting all eigenvectors of all root microservices altogether.
+
 Results files: 
 * Generally, `.pkl` files have some objects we construct in an expensive job (e.g. aggregate dependency graphs). 
 * `.png` are plots.
