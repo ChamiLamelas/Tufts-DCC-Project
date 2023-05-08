@@ -40,34 +40,39 @@ def plot_death_star(calling, called_by):
 
 
 def plot_trace_histogram(traces):
+    s = 24
     print(sum(v < 10000 for v in traces.values()), max(traces.values()))
     path = os.path.join(c.RESULT_FOLDER, CALL_DISTRIBUTIONS, 'traces.png')
     c.prep_path(path)
     plt.figure()
     d = list(traces.values())
     plt.hist(d, bins=200)
-    plt.suptitle("Distribution of Microservice Trace Occurrence")
-    plt.title(f"Minimum Occurrence Count={min(d)}, Maximum={max(d)}")
-    plt.xlabel("Number of Traces Microservice Occurred In")
-    plt.ylabel("Frequency")
+    plt.suptitle("Distribution of Microservice Trace Occurrence", fontsize=s)
+    plt.title(f"Minimum Occurrence Count={min(d)}, Maximum={max(d)}", fontsize=s)
+    plt.xlabel("Number of Traces Microservice Occurred In", fontsize=s)
+    plt.ylabel("Frequency", fontsize=s)
     plt.grid()
-    plt.savefig(path)
+    plt.savefig(path, bbox_inches='tight')
 
 
 def plot_call_histograms(called_by, calling):
+    s = 18
     paths = (os.path.join(c.RESULT_FOLDER, CALL_DISTRIBUTIONS, p)
              for p in ('called_by.png', 'calling.png'))
     for p, n, g in zip(paths, ('Called By', 'Calling'), (called_by, calling)):
         c.prep_path(p)
         plt.figure()
         d = [len(v) for v in g.values()]
-        plt.hist(d, bins=200)
-        plt.suptitle(n + " Distribution")
-        plt.title(f"Minimum {n} Count={min(d)}, Maximum={max(d)}")
-        plt.xlabel(n)
-        plt.ylabel("Frequency")
+        plt.hist(d, bins=200, density=True)
+        print(f"Minimum {n} Count={min(d)}, Maximum={max(d)}")
+        plt.xlabel(n + " Count", fontsize=s)
+        plt.ylabel("Normalized Frequency", fontsize=s)
+        if n == "Calling":
+            plt.yticks([0, 0.1, 0.2])
         plt.grid()
-        plt.savefig(p)
+        plt.tick_params('y', labelsize=s)
+        plt.tick_params('x', labelsize=s)
+        plt.savefig(p, bbox_inches='tight')
 
 
 def calculate_sparsity_ratio(count_microservices, called_by):
@@ -112,6 +117,7 @@ def calculate_connected_components(called_by, calling):
 
 
 def calculate_correlation(called_by, calling, traces):
+    s = 18
     paths = [os.path.join(c.RESULT_FOLDER, CORRELATIONS, p)
              for p in ('called_by_and_trace_freq.png', 'calling_and_trace_freq.png')]
     c.prep_path(paths[0])
@@ -120,28 +126,30 @@ def calculate_correlation(called_by, calling, traces):
     y1 = list()
     for k, v in called_by.items():
         x1.append(len(v))
-        y1.append(traces[k])
+        y1.append(traces[k]/1e6)
     plt.figure()
-    plt.xlabel("Called By Degree")
-    plt.ylabel("Number of Containing Traces")
+    plt.xlabel("Called By Degree", fontsize=s)
+    plt.ylabel("# Containing Traces (1e6)", fontsize=s)
+    plt.tick_params('y', labelsize=s)
+    plt.tick_params('x', labelsize=s)
     plt.scatter(x1, y1)
-    plt.suptitle("Correlation between Called-By and Trace Frequency")
-    plt.title(f"r = {pearsonr(x1, y1)[0]:.4f}")
+    print(f"r = {pearsonr(x1, y1)[0]:.4f}")
     plt.grid()
-    plt.savefig(paths[0])
+    plt.savefig(paths[0], bbox_inches='tight')
     x2 = list()
     y2 = list()
     for k, v in calling.items():
         x2.append(len(v))
-        y2.append(traces[k])
+        y2.append(traces[k]/1e6)
     plt.figure()
-    plt.xlabel("Calling Degree")
-    plt.ylabel("Number of Containing Traces")
+    plt.xlabel("Calling Degree", fontsize=s)
+    plt.ylabel("# Containing Traces (1e6)", fontsize=s)
+    plt.tick_params('y', labelsize=s)
+    plt.tick_params('x', labelsize=s)
     plt.scatter(x2, y2)
-    plt.suptitle("Correlation between Calling and Trace Frequency")
-    plt.title(f"r = {pearsonr(x2, y2)[0]:.4f}")
+    print(f"r = {pearsonr(x2, y2)[0]:.4f}")
     plt.grid()
-    plt.savefig(paths[1])
+    plt.savefig(paths[1], bbox_inches='tight')
 
 
 def main():

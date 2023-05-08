@@ -239,4 +239,4 @@ def get_max_concurrency_and_depth(trace):
         for rootidx in roots:
             if isancestor(c.rpc(row), c.rpc(trace[rootidx])):
                 trees[c.rpc(trace[rootidx])].append(c.rpc(row))
-    return max(get_max_concurrency(tree) for tree in trees.values()), max(get_depth(tree) for tree in trees.values())
+    return (1,1) if len(trees) == 0 else (max(get_max_concurrency(tree) for tree in trees.values()), max(get_depth(tree) for tree in trees.values()))
